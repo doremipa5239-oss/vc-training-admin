@@ -87,6 +87,7 @@
     return result;
   }
   function amountDue(person, fees) { return person.status === 'cancelled' ? 0 : person.feeAmount == null ? fees[person.membership] == null ? null : Number(fees[person.membership]) : person.feeAmount; }
+  }
   function summarize(state) {
     const result = { total: state.participants.length, approved: 0, pending: 0, cancelled: 0, present: 0, expected: 0, paid: 0, outstanding: 0, refundReview: 0, notes: 0, unpriced: 0 };
     state.participants.forEach(function (p) {
@@ -94,10 +95,14 @@
       if (p.attendance === 'present') result.present++;
       if (p.notes) result.notes++;
       const due = amountDue(p, state.fees);
-      if (due === null) result.unpriced++;
-      result.expected += due;
+      if (due === null) {
+        result.unpriced++;
+      } else {
+        result.expected += due;
+        result.outstanding += Math.max(0, due - p.paidAmount);
+        result.refundReview += Math.max(0, p.paidAmount - due);
+      }
       result.paid += p.paidAmount;
-      if (due !== null) { result.outstanding += Math.max(0, due - p.paidAmount); result.refundReview += Math.max(0, p.paidAmount - due); }
     });
     result.completedTasks = state.tasks.filter(function (t) { return t.status === 'done'; }).length;
     return result;
