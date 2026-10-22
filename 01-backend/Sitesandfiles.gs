@@ -199,6 +199,9 @@ function updateEducationSiteBasicInfo(data) {
       if (resetLinkedData) {
         row[COL.linkedSheetId - 1] = '';
         row[COL.linkedSheetUrl - 1] = '';
+        row[COL.dataReviewConfirmedAt - 1] = '';   // 교육생 검토 확인 해제
+        row[COL.finalCompleted - 1] = '';          // 최종 완료 도장 해제
+        row[COL.lastApprovedRevision - 1] = '';    // 승인 이력 초기화
       }
       row[COL.revision - 1] = Number(row[COL.revision - 1] || 0) + 1;
       row[COL.updatedAt - 1] = new Date();
