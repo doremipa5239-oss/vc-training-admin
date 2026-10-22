@@ -984,12 +984,6 @@ function constantTimeEquals_(left, right) {
   return diff === 0;
 }
 
-function getAdminLoginRateKey_(adminId) {
-  let viewerKey = '';
-  try { viewerKey = Session.getTemporaryActiveUserKey(); } catch (e) {}
-  return 'VUP_ADMIN_LOGIN_FAIL_' + hashText_(adminId + '|' + viewerKey).slice(0, 32);
-}
-
 function createAdminSession_(account) {
   // 만료 세션은 접근 시 즉시 차단되므로 매 로그인마다 전체 속성을 훑지 않습니다.
   // 낮은 확률의 정리만 수행해 로그인 체감 시간을 일정하게 유지합니다.
