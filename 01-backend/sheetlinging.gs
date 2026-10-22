@@ -671,93 +671,30 @@ function buildRoommateTemplate_(sheet) {
  * 관리자가 기존 통합 시트 없이 시작할 때: 교육생 명단 / 자리 배치도 / 객실배치
  * 3개 시트가 표준 양식으로 갖춰진 새 파일을 만들어 바로 연동합니다.
  */
-function createDedicatedMealSpreadsheet(label, targetFolderId, requestId) {
-  requireAdmin_();
-  const requestKey = String(requestId || '').trim().slice(0, 120);
-  const propertyKey = requestKey ? 'mealSheetRequest:' + requestKey : '';
-  const properties = PropertiesService.getScriptProperties();
-  const createLock = LockService.getScriptLock();
-  createLock.waitLock(15000);
-  try {
-    if (propertyKey) {
-      const stored = properties.getProperty(propertyKey);
-      if (stored) {
-        try {
-          const previous = JSON.parse(stored);
-          const previousFile = DriveApp.getFileById(previous.spreadsheetId);
-          return {
-            success: true,
-            reused: true,
-            message: '이미 만든 식사 자리배치 시트를 다시 불러왔습니다.',
-            spreadsheetId: previous.spreadsheetId,
-            spreadsheetUrl: previous.spreadsheetUrl,
-            spreadsheetName: previous.spreadsheetName,
-            targetFolderId: previous.targetFolderId,
-            fileName: previousFile.getName()
-          };
-        } catch (storedError) {
-          properties.deleteProperty(propertyKey);
-        }
-      }
+function createDedicatedMealSpreadsheet(siteId, title) {
+  const ss = SpreadsheetApp.create(title);
+
+  // 1) 내가 의도적으로 만들 "표준 시트" 목록
+  const standardSheetNames = ['교육생 명단', '식사 자리 배치', '객실 배정'];
+
+  // 2) 생성 직후 존재하는 기본 시트들의 ID를 먼저 기록해 둔다 (이름이 아니라 ID로 식별)
+  const defaultSheetIds = ss.getSheets().map(function (s) { return s.getSheetId(); });
+
+  // 3) 표준 시트들을 생성
+  standardSheetNames.forEach(function (name) {
+    if (!ss.getSheetByName(name)) ss.insertSheet(name);
+  });
+
+  // 4) 처음부터 있던 기본 빈 시트(ID 기준)만 삭제. 단, 전체 시트는 최소 1장 남긴다.
+  ss.getSheets().forEach(function (s) {
+    const isDefault = defaultSheetIds.indexOf(s.getSheetId()) !== -1;
+    const isStandard = standardSheetNames.indexOf(s.getName()) !== -1;
+    if (isDefault && !isStandard && ss.getSheets().length > 1) {
+      ss.deleteSheet(s);
     }
-    const today = Utilities.formatDate(new Date(), TIMEZONE, 'yyyy-MM-dd');
-    const fileName = '식사 자리배치_' + (label ? String(label).trim() + '_' : '') + today;
-    const ss = SpreadsheetApp.create(fileName);
+  });
 
-    // 3개 표준 시트 생성 (정확한 표준 이름 → 연동 시 즉시 인식)
-    const pSheet = ss.insertSheet(LINKED_SHEET_CONFIG.participantSheetNames[0]);
-    buildParticipantTemplate_(pSheet);
-    markGeneratedSheet_(pSheet, 'participant', pSheet.getName());
-
-    const sSheet = ss.insertSheet(LINKED_SHEET_CONFIG.lectureSeatSheetNames[0]);
-    buildLectureSeatTemplate_(sSheet);
-    markGeneratedSheet_(sSheet, 'lectureSeat', sSheet.getName());
-
-    const rSheet = ss.insertSheet(LINKED_SHEET_CONFIG.roommateSheetNames[0]);
-    buildRoommateTemplate_(rSheet);
-    markGeneratedSheet_(rSheet, 'roommate', rSheet.getName());
-
-    // 기본 생성되는 빈 시트 제거 (내가 만든 표준 3개는 ID로 보호)
-    const keepSheetIds = {};
-    keepSheetIds[pSheet.getSheetId()] = true;
-    keepSheetIds[sSheet.getSheetId()] = true;
-    keepSheetIds[rSheet.getSheetId()] = true;
-    ss.getSheets().forEach(function (existingSheet) {
-      // 시트가 최소 1개는 남아야 하므로, 표준 3개가 모두 있을 때만 그 외 시트를 지웁니다.
-      if (!keepSheetIds[existingSheet.getSheetId()] && ss.getNumSheets() > 1) {
-        ss.deleteSheet(existingSheet);
-      }
-    });
-
-    // 관리자가 드라이브 탐색기에서 선택한 폴더로 새 스프레드시트 파일을 이동합니다.
-    // 'root' 또는 빈 값이면 내 드라이브의 기본 위치에 그대로 둡니다.
-    const normalizedFolderId = String(targetFolderId || 'root').trim();
-    if (normalizedFolderId && normalizedFolderId !== 'root') {
-      try {
-        const targetFolder = DriveApp.getFolderById(normalizedFolderId);
-        DriveApp.getFileById(ss.getId()).moveTo(targetFolder);
-      } catch (folderError) {
-        // 시트는 이미 생성된 상태이므로, 잘못된 위치에 남는 일을 막기 위해
-        // 사용자가 원인을 바로 알 수 있도록 명확한 오류를 반환합니다.
-        throw new Error('구글 시트는 생성했지만 선택한 폴더로 이동하지 못했습니다. 폴더 접근 권한을 확인한 뒤 다시 시도해주세요. (' + folderError.message + ')');
-      }
-    }
-
-    const result = {
-      success: true,
-      message: '"' + fileName + '" 파일을 만들었습니다. 예시 행을 지우고 실제 정보를 채운 뒤 돌아와주세요.',
-      spreadsheetId: ss.getId(),
-      spreadsheetUrl: ss.getUrl(),
-      spreadsheetName: fileName,
-      targetFolderId: normalizedFolderId
-    };
-    if (propertyKey) properties.setProperty(propertyKey, JSON.stringify(result));
-    return result;
-  } catch (error) {
-    return { success: false, message: error.message };
-  } finally {
-    try { createLock.releaseLock(); } catch (e) {}
-  }
+  return ss;
 }
 
 /**
