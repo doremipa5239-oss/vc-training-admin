@@ -200,6 +200,7 @@ function updateEducationSiteBasicInfo(data) {
         row[COL.linkedSheetId - 1] = '';
         row[COL.linkedSheetUrl - 1] = '';
       }
+      row[COL.revision - 1] = Number(row[COL.revision - 1] || 0) + 1;
       row[COL.updatedAt - 1] = new Date();
       return row;
     });
@@ -245,7 +246,13 @@ function getEducationSites(forceRefresh) {
       .filter(row => String(row[COL.siteId - 1] || '').trim() !== '')
       .map(row => decorateAdminSiteStatus_(rowToSiteInfo_(row)))
       .filter(function (site) { return !site.deletedAt; })
-      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      .sort(function (a, b) {
+        const timeA = new Date(a.createdAt).getTime();
+        const timeB = new Date(b.createdAt).getTime();
+        const safeA = isNaN(timeA) ? 0 : timeA;
+        const safeB = isNaN(timeB) ? 0 : timeB;
+        return safeB - safeA;   // 최신 생성 순
+      });
 
     const result = { success: true, sites };
     putSiteListCache_(cacheKey, result);
@@ -484,6 +491,7 @@ function restoreEducationSite(siteId) {
       row[COL.purgeAt - 1] = '';
       row[COL.status - 1] = String(row[COL.preTrashStatus - 1] || '사용중');
       row[COL.preTrashStatus - 1] = '';
+      row[COL.revision - 1] = Number(row[COL.revision - 1] || 0) + 1;
       row[COL.updatedAt - 1] = new Date();
       return row;
     });
