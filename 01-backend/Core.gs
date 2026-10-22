@@ -147,6 +147,15 @@ function ensureSitesHeader_(sheet) {
     sheet.getRange(1, 1, 1, SITE_HEADERS.length).setValues([SITE_HEADERS]);
   }
 
+  // 표준 컬럼(33개) 뒤에 남아 있는 옛 헤더 찌꺼기를 지워 컬럼 밀림을 방지합니다.
+  const extraColumns = sheet.getMaxColumns() - SITE_HEADERS.length;
+  if (extraColumns > 0) {
+    const extraHeaders = sheet.getRange(1, SITE_HEADERS.length + 1, 1, extraColumns).getValues()[0];
+    if (extraHeaders.some(function (value) { return String(value || '').trim() !== ''; })) {
+      sheet.getRange(1, SITE_HEADERS.length + 1, 1, extraColumns).clearContent();
+    }
+  }
+
   if (sheet.getFrozenRows() !== 1) sheet.setFrozenRows(1);
 }
 
