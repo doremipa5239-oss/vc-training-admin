@@ -373,8 +373,9 @@ function buildSiteHealthCheck_(siteId) {
       const isPubliclyReadable = sharingAccess === DriveApp.Access.ANYONE ||
         sharingAccess === DriveApp.Access.ANYONE_WITH_LINK;
       const moduleKey = code === 'photoFolder' ? 'photos' : 'materials';
-      const shouldBePublic = !publicConfig.configured ||
-        (publicConfig.siteAvailable && publicConfig.modules[moduleKey]);
+        const publicModules = publicConfig.modules || {};
+        const shouldBePublic = !publicConfig.configured ||
+          (publicConfig.siteAvailable && publicModules[moduleKey]);
       if (shouldBePublic && !isPubliclyReadable) {
         add(code, label, 'blocker', '현재 공개 시점이지만 폴더가 비공개입니다. 자료 공개 정책을 다시 적용해주세요.');
         return;
