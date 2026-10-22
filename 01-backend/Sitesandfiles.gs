@@ -166,8 +166,6 @@ function updateEducationSiteBasicInfo(data) {
 
     const ss = getSpreadsheet_();
     const sheet = getOrCreateSitesSheet_(ss);
-    const rowIndex = findSiteRowIndex_(sheet, data.siteId);
-    if (!rowIndex) throw new Error('해당 교육 사이트를 찾을 수 없습니다.');
 
     const rawEducationValue = educationInput;
 
