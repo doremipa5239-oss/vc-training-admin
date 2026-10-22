@@ -1,0 +1,3605 @@
+<!-- admin-script-1 : 앱 뼈대 · 로그인/세션 · 화면 이동 · 운영 홈 · 강의 목록/휴지통 · 프로필 · 문의 · 이벤트 처리 · 모달 · 공통 UI/유틸 -->
+<!-- 주의: admin-script-1 → 2 → 3 을 반드시 이 순서로, 연속해서 include 해야 합니다. (세 파일이 하나의 스크립트를 이룹니다) -->
+<script>
+  (function () {
+    "use strict";
+
+    const LEGACY_SESSION_KEY = "vup_admin_portal_session_v1";
+    const SESSION_KEY = "vup_admin_portal_session_v2";
+    const DRAFT_KEY = "vup_admin_course_draft_v1";
+    const XLSX_URL = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+    const XLSX_INTEGRITY = "sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT";
+    const CLIENT_IDLE_MS = 60 * 60 * 1000;
+    // 서버의 ADMIN_PASSWORD_* 상수와 같은 기준입니다. 정책 변경 시 양쪽을 함께 수정하세요.
+    const PASSWORD_POLICY = {
+      minLength: 7,
+      maxLength: 100,
+      text: "비밀번호는 7자 이상이며 영문과 숫자를 모두 포함해야 합니다. (대문자·특수문자는 넣어도 됩니다)"
+    };
+    // 지표 카드에 표시할 교육명 줄 수
+    const METRIC_TITLE_ROWS = 2;
+
+    const VIEW_META = {
+      dashboard: { eyebrow: "WORKSPACE", title: "운영 홈" },
+      profile: { eyebrow: "MY ACCOUNT", title: "관리자 기본 정보" },
+      create: { eyebrow: "NEW EDUCATION", title: "새로운 강의 개설하기" },
+      courses: { eyebrow: "EDUCATION", title: "개설된 강의 관리하기" },
+      history: { eyebrow: "ARCHIVE", title: "과거 기록보기" },
+      satisfaction: { eyebrow: "INSIGHT", title: "만족도 설문조사" },
+      inquiries: { eyebrow: "SUPPORT", title: "문의 사항" },
+      trash: { eyebrow: "OTHERS", title: "휴지통" },
+      "developer-inquiries": { eyebrow: "DEVELOPER DESK", title: "문의사항 답변하기" },
+      course: { eyebrow: "COURSE OPERATIONS", title: "강의 운영" }
+    };
+
+    const STATE = {
+      token: "",
+      admin: null,
+      adminAccounts: [],
+      profile: null,
+      profileLoaded: false,
+      loginExitGuard: false,
+      dashboard: null,
+      view: "dashboard",
+      courses: [],
+      course: null,
+      materials: [],
+      photos: [],
+      surveys: [],
+      health: null,
+      operations: null,
+      inquiries: [],
+      currentCourseTab: "overview",
+      createCourseStep: 1,
+      listFilter: "all",
+      listSearch: "",
+      courseDeleteMode: false,
+      selectedCourseIds: [],
+      trashCourses: [],
+      selectedTrashIds: [],
+      serverClockOffset: 0,
+      serverClockTimer: null,
+      serverClockSyncTimer: null,
+      networkTimer: null,
+      networkOnline: null,
+      portalHistoryKey: "",
+      selectedFiles: { material: [], photo: [] },
+      mealInput: {
+        participants: [],
+        seatGrid: [],
+        roommateRows: [],
+        rosterName: "",
+        seatName: "",
+        roommateName: ""
+      },
+      xlsxPromise: null,
+      busy: false,
+      navigationVersion: 0,
+      listRequestVersion: 0,
+      dashboardFetchedAt: 0,
+      courseListCache: {},
+      loaderCount: 0,
+      createDatesInitialized: false
+      ,resourceLoaded: { materials: false, photos: false, surveys: false }
+      ,photoNextPageToken: ""
+      ,photoHasMore: false
+      ,sessionExpiresAt: 0
+      ,lastActivityAt: Date.now()
+      ,idleTimer: null
+      ,modalReturnFocus: null
+      ,createRequestId: ""
+      ,lastTrashedIds: []
+      ,pendingMealPayload: null
+      ,pendingSeatingPayload: null
+      ,pendingDocumentDraft: null
+      ,pendingSchedulePlan: null
+      ,pendingDuplicateSourceId: null
+      ,seatMap: null
+      ,seatSwapPick: null
+      ,roomPlan: null
+      ,roomSwapPick: null
+      ,roomConfig: { floors: "", perFloor: "20" }
+      ,roomPairFilter: null
+      ,pendingPreparedPlan: null
+      ,pendingRosterRows: null
+      ,rosterFilter: "all"
+      ,rosterSearch: ""
+      ,seatingStep: ""
+      ,seatingMode: { seat: "", room: "", meal: "" }
+      ,manualSeatingRows: null
+      ,manualReview: null
+      ,settingGroupOpen: { basic: false, schedule: true, during: false }
+      ,segmentEditOpen: false
+      ,segments: []
+      ,segmentSummary: ""
+      ,segmentsLoaded: false
+      ,seatMapLoaded: false
+      ,pendingSeatingMode: ""
+      ,surveyRequestId: ""
+      ,satisfactionTab: "create"
+      ,satisfactionType: "lecture"
+      ,satisfactionLectures: []
+      ,satisfactionFolder: null
+      ,satisfactionList: null
+      ,satisfactionPrograms: []
+      ,satisfactionFilter: { programName: "", formType: "" }
+      ,satisfactionAnalysis: null
+      ,satisfactionInstructors: null
+      ,satisfactionAnalysisMode: "survey"
+      ,satisfactionForceInstructor: false
+      ,satisfactionStep: 1
+      ,satisfactionCountsLoading: false
+      ,roster: null
+      ,rosterLoading: false
+      ,rosterRoomDraft: null
+      ,pageBlocks: []
+      ,pageBuilderDirty: false
+      ,editingPageBlockIndex: -1
+      ,pendingPageBlockFile: null
+      ,operationsPlan: null
+      ,operationStageFilter: "all"
+      ,operationSaving: false
+    };
+
+    const ELEMENTS = {};
+
+    document.addEventListener("DOMContentLoaded", initializePortal);
+
+    function initializePortal() {
+      cacheElements();
+      installGlobalErrorNet();
+      bindStaticEvents();
+      ELEMENTS.topbarDate.textContent = formatServerClock(new Date());
+      restoreStoredSession();
+    }
+
+    function cacheElements() {
+      [
+        "loginView", "appView", "loginForm", "loginId", "loginPassword", "loginError",
+        "loginSubmit", "passwordToggle", "sidebar", "sidebarOpen", "sidebarClose",
+        "sidebarBackdrop", "logoutButton", "sidebarAvatar", "sidebarUserName",
+        "sidebarUserRole", "developerInquiryNav", "activeCourseBadge", "inquiryBadge",
+        "trashBadge", "portalRefreshButton",
+        "topbarEyebrow", "topbarTitle", "topbarDate", "topbarNetwork",
+        "topbarNetworkText", "contentRoot", "portalLoader",
+        "loaderTitle", "loaderMessage", "modalRoot", "toastRegion"
+      ].forEach(function (id) {
+        ELEMENTS[id] = document.getElementById(id);
+      });
+    }
+
+    function bindStaticEvents() {
+      ELEMENTS.loginForm.addEventListener("submit", handleLogin);
+      ELEMENTS.passwordToggle.addEventListener("click", togglePassword);
+      ELEMENTS.logoutButton.addEventListener("click", handleLogout);
+      ELEMENTS.portalRefreshButton.addEventListener("click", confirmPortalRefresh);
+      ELEMENTS.sidebarOpen.addEventListener("click", openSidebar);
+
+      ["pointerdown", "keydown", "touchstart"].forEach(function (name) {
+        window.addEventListener(name, recordActivity, { passive: true });
+      });
+
+      // 브라우저가 연결 끊김을 먼저 알려주면 즉시 반영합니다.
+      window.addEventListener("offline", function () {
+        setNetworkStatus(false);
+      });
+      window.addEventListener("online", probeNetworkStatus);
+      window.addEventListener("beforeunload", function (event) {
+        if (!STATE.pageBuilderDirty) return;
+        event.preventDefault();
+        event.returnValue = "";
+      });
+      if (
+        window.google &&
+        google.script &&
+        google.script.history &&
+        typeof google.script.history.setChangeHandler === "function"
+      ) {
+        google.script.history.setChangeHandler(handlePortalHistoryChange);
+      } else {
+        window.addEventListener("popstate", handlePortalPopState);
+      }
+      ELEMENTS.sidebarClose.addEventListener("click", closeSidebar);
+      ELEMENTS.sidebarBackdrop.addEventListener("click", closeSidebar);
+
+      ELEMENTS.loginView.addEventListener("click", function (event) {
+        const helpButton = event.target.closest("[data-login-help]");
+        if (!helpButton) return;
+        event.preventDefault();
+        openLoginHelp(helpButton.dataset.loginHelp);
+      });
+
+      document.addEventListener("click", function (event) {
+        const viewButton = event.target.closest("[data-view]");
+        if (viewButton && !viewButton.closest("#contentRoot")) {
+          event.preventDefault();
+          navigate(viewButton.dataset.view);
+        }
+      });
+
+      ELEMENTS.contentRoot.addEventListener("click", handleContentClick);
+      ELEMENTS.contentRoot.addEventListener("change", handleContentChange);
+      ELEMENTS.contentRoot.addEventListener("input", handleContentInput);
+      ELEMENTS.contentRoot.addEventListener("submit", handleContentSubmit);
+      ELEMENTS.modalRoot.addEventListener("click", handleModalClick);
+      ELEMENTS.modalRoot.addEventListener("submit", handleModalSubmit);
+      ELEMENTS.modalRoot.addEventListener("change", handleModalChange);
+      ELEMENTS.modalRoot.addEventListener("input", function (event) {
+        if (event.target && event.target.type === "tel") formatPhoneInput(event.target);
+      });
+
+      window.addEventListener("keydown", function (event) {
+        if (ELEMENTS.modalRoot.classList.contains("hidden")) return;
+        if (event.key === "Escape" && ELEMENTS.modalRoot.dataset.required !== "true") closeModal();
+        if (event.key === "Tab") trapModalFocus(event);
+      });
+    }
+
+    function clearStoredSession() {
+      try {
+        sessionStorage.removeItem(SESSION_KEY);
+        sessionStorage.removeItem(LEGACY_SESSION_KEY);
+        localStorage.removeItem(LEGACY_SESSION_KEY);
+      } catch (error) {}
+    }
+
+    function confirmPortalRefresh() {
+      const confirmed = window.confirm(
+        "새로고침하시겠습니까?\n새로 고침 시 현재 작성중인 내용이 저장되지 않을 수 있습니다"
+      );
+
+      if (!confirmed) return;
+      closeModal();
+      STATE.createCourseStep = 1;
+      STATE.createDatesInitialized = false;
+      navigate("dashboard", { forceRefresh: true });
+    }
+
+    function callServer(method) {
+      const args = Array.prototype.slice.call(arguments, 1);
+      return new Promise(function (resolve, reject) {
+        if (!window.google || !google.script || !google.script.run) {
+          reject(new Error("Apps Script 실행 환경에서 열어주세요."));
+          return;
+        }
+        const runner = google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(function (error) {
+            const message = error && error.message ? error.message : String(error || "요청을 처리하지 못했습니다.");
+            reject(new Error(message));
+          });
+        runner[method].apply(runner, args);
+      });
+    }
+
+    function api(method) {
+      const args = [method, STATE.token].concat(Array.prototype.slice.call(arguments, 1));
+      return callServer.apply(null, args).catch(function (error) {
+        if (/로그인|인증|계정/.test(error.message) && /만료|필요|중지|확인되지/.test(error.message)) {
+          clearSession();
+          showLogin();
+          showToast("로그인이 필요합니다.", error.message, "error");
+        }
+        throw error;
+      });
+    }
+
+    /**
+     * admin.html 상단의 <script> 상수 블록이 빠지거나 실패해도
+     * 앱 전체가 죽지 않도록 안전하게 읽습니다.
+     * (이 값이 없으면 로그인 직후 ReferenceError 로 화면이 비어버렸습니다.)
+     */
+    function getRequestedCourseId() {
+      try {
+        return typeof REQUESTED_COURSE_ID === "string" ? REQUESTED_COURSE_ID : "";
+      } catch (error) {
+        return "";
+      }
+    }
+
+    /* ──────────────────────────────────────────────────────────────
+     * 로그인 이후 오류를 '보이게' 만드는 안전장치
+     * 예전에는 로그인에 성공한 뒤 화면을 그리다 오류가 나면, 그 메시지가
+     * 이미 숨겨진 로그인 입력칸 쪽으로 들어가 버려서 사용자에게는
+     * 아무 단서 없는 빈 화면(흰 화면)만 남았습니다.
+     * ────────────────────────────────────────────────────────────── */
+    function isAppVisible() {
+      return Boolean(ELEMENTS.appView) && !ELEMENTS.appView.classList.contains("hidden");
+    }
+
+    function isContentEmpty() {
+      return !ELEMENTS.contentRoot || !String(ELEMENTS.contentRoot.innerHTML || "").trim();
+    }
+
+    function renderFatalError(title, message) {
+      if (!ELEMENTS.contentRoot) return;
+      ELEMENTS.contentRoot.innerHTML =
+        '<div class="page-stack"><div class="panel panel-pad">' +
+          '<div class="danger-callout" style="padding:16px 18px">' +
+            '<strong>' + escapeHtml(title) + '</strong>' +
+            '<span>' + escapeHtml(message || "알 수 없는 오류") + '</span>' +
+          '</div>' +
+          '<p class="field-help" style="margin-top:14px">' +
+            '이 메시지를 그대로 담당자에게 전달하면 원인을 바로 찾을 수 있습니다.</p>' +
+          '<div style="margin-top:12px">' +
+            '<button type="button" class="btn btn-secondary btn-small" data-view="dashboard">대시보드 다시 열기</button>' +
+          '</div>' +
+        '</div></div>';
+    }
+
+    function reportLoginPhaseError(error) {
+      var message = (error && error.message) ? error.message : String(error || "알 수 없는 오류");
+      if (!isAppVisible()) {
+        showLoginError(message);
+        if (ELEMENTS.loginPassword) ELEMENTS.loginPassword.focus();
+        return;
+      }
+      renderFatalError("로그인 후 화면을 여는 중 문제가 발생했습니다.", message);
+      try { showToast("화면 표시 오류", message, "error"); } catch (toastError) {}
+    }
+
+    /** 어떤 이유로든 화면이 비어버리면, 그 이유를 화면에 띄웁니다. */
+    function installGlobalErrorNet() {
+      function handle(message) {
+        if (!isAppVisible() || !isContentEmpty()) return;
+        renderFatalError("화면을 그리는 중 문제가 발생했습니다.", message);
+      }
+      window.addEventListener("error", function (event) {
+        handle((event && event.message) || "스크립트 오류");
+      });
+      window.addEventListener("unhandledrejection", function (event) {
+        var reason = event && event.reason;
+        handle((reason && reason.message) || String(reason || "처리되지 않은 오류"));
+      });
+    }
+
+    function handleLogin(event) {
+      event.preventDefault();
+      if (STATE.busy) return;
+      const id = ELEMENTS.loginId.value.trim();
+      const password = ELEMENTS.loginPassword.value;
+      ELEMENTS.loginError.classList.add("hidden");
+      if (!id || !password) {
+        showLoginError("아이디와 비밀번호를 모두 입력해주세요.");
+        return;
+      }
+      setLoginBusy(true);
+      callServer("portalLogin", { id: id, password: password })
+        .then(function (result) {
+          STATE.token = result.token;
+          persistSession(result.expiresAt);
+          applyBootstrap(result);
+          ELEMENTS.loginPassword.value = "";
+          showApp();
+          if (result.mustReplaceInitialPassword) {
+            showChangePasswordModal(true);
+            return Promise.resolve();
+          }
+          var requestedCourseId = getRequestedCourseId();
+          if (requestedCourseId) return openCourse(requestedCourseId);
+          return navigate("dashboard");
+        })
+        .catch(function (error) {
+          reportLoginPhaseError(error);
+        })
+        .finally(function () {
+          setLoginBusy(false);
+        });
+    }
+
+    function togglePassword() {
+      const visible = ELEMENTS.loginPassword.type === "text";
+      ELEMENTS.loginPassword.type = visible ? "password" : "text";
+      ELEMENTS.passwordToggle.textContent = visible ? "보기" : "숨김";
+      ELEMENTS.passwordToggle.setAttribute("aria-label", visible ? "비밀번호 표시" : "비밀번호 숨기기");
+    }
+
+    function setLoginBusy(busy) {
+      STATE.busy = busy;
+      ELEMENTS.loginSubmit.disabled = busy;
+      ELEMENTS.loginSubmit.innerHTML = busy
+        ? "<span>로그인 확인 중...</span><span>•••</span>"
+        : "<span>관리자 콘솔 시작하기</span><span aria-hidden=\"true\">→</span>";
+    }
+
+    function showLoginError(message) {
+      // 분실 안내는 로그인 버튼 하단의 ID 찾기 / 비밀번호 찾기 버튼이 대신합니다.
+      ELEMENTS.loginError.textContent = String(
+        message || "아이디 또는 비밀번호가 올바르지 않습니다."
+      );
+      ELEMENTS.loginError.classList.remove("hidden");
+    }
+
+    function handleLogout() {
+      const message = STATE.pageBuilderDirty
+        ? "사용자 화면에 저장하지 않은 변경이 있습니다. 변경을 버리고 로그아웃하시겠습니까?"
+        : "정말로 로그아웃하시겠습니까?";
+      if (!window.confirm(message)) return;
+      const token = STATE.token;
+      clearSession();
+      showLogin();
+      if (token) callServer("portalLogout", token).catch(function () {});
+    }
+
+    function applyBootstrap(result) {
+      STATE.admin = result.admin || {};
+      STATE.adminAccounts = result.adminAccounts || [];
+      // 로그인 응답은 속도를 위해 프로필을 담지 않습니다(profileDeferred).
+      // 프로필은 대시보드 응답이나 portalGetProfile로 곧 채워집니다.
+      STATE.profile = result.profile || null;
+      STATE.profileLoaded = Boolean(result.profile);
+      STATE.dashboard = result.dashboard || {};
+      updateAccountChrome();
+    }
+
+    /** 프로필이 아직 없으면 한 번만 불러옵니다. */
+    function ensureProfileLoaded() {
+      if (STATE.profileLoaded) return Promise.resolve(STATE.profile);
+      return api("portalGetProfile")
+        .then(function (result) {
+          STATE.profile = result.profile || {};
+          STATE.profileLoaded = true;
+          updateAccountChrome();
+          return STATE.profile;
+        })
+        .catch(function () { return STATE.profile || {}; });
+    }
+
+    function updateAccountChrome() {
+      const displayName = (STATE.profile && STATE.profile.name) || STATE.admin.displayName || STATE.admin.id || "관리자";
+      ELEMENTS.sidebarUserName.textContent = displayName;
+      ELEMENTS.sidebarAvatar.textContent = displayName.slice(0, 1);
+      ELEMENTS.sidebarUserRole.textContent =
+        STATE.admin && STATE.admin.isDeveloper ? "총괄 개발자" : "교육 운영 관리자";
+      ELEMENTS.developerInquiryNav.classList.toggle(
+        "hidden",
+        !(STATE.admin && STATE.admin.isDeveloper)
+      );
+      const counts = (STATE.dashboard && STATE.dashboard.counts) || {};
+      const activeCount = Number(counts.active || 0) + Number(counts.upcoming || 0);
+      setBadge(ELEMENTS.activeCourseBadge, activeCount);
+      if (!ELEMENTS.appView.classList.contains("hidden")) {
+        updateNavigationChrome(STATE.view || "dashboard");
+      }
+    }
+
+    function showLogin() {
+      hideLoader(true);
+      closeModal(true);
+      ELEMENTS.appView.classList.add("hidden");
+      ELEMENTS.loginView.classList.remove("hidden");
+      armLoginExitGuard();
+      window.setTimeout(function () {
+        ELEMENTS.loginId.focus();
+      }, 80);
+    }
+
+    /**
+     * 로그인 화면에서 뒤로가기를 누르면 페이지를 그대로 벗어나 버립니다.
+     * 되돌아올 지점을 history에 하나 심어두고, 뒤로가기가 그 지점을 지날 때
+     * 이탈 여부를 물어봅니다. 머무르기를 고르면 지점을 다시 심습니다.
+     */
+    function armLoginExitGuard() {
+      STATE.loginExitGuard = true;
+      pushLoginGuardState();
+    }
+
+    function pushLoginGuardState() {
+      try {
+        if (window.google && google.script && google.script.history) {
+          google.script.history.push({ vupLoginGuard: true }, null, "login");
+          return;
+        }
+        window.history.pushState(
+          { vupLoginGuard: true },
+          "",
+          window.location.pathname + window.location.search + "#login"
+        );
+      } catch (error) {}
+    }
+
+    /** 로그인 화면에서 발생한 뒤로가기인지 판단해 처리합니다. 처리했으면 true. */
+    function handleLoginExitAttempt() {
+      if (!STATE.loginExitGuard) return false;
+      if (ELEMENTS.loginView.classList.contains("hidden")) return false;
+      const leave = window.confirm(
+        "해당 페이지를 나가겠습니까?\n로그인 화면을 벗어나면 처음부터 다시 접속해야 합니다."
+      );
+      if (leave) {
+        STATE.loginExitGuard = false;
+        try { window.history.back(); } catch (error) {}
+        return true;
+      }
+      pushLoginGuardState();
+      return true;
+    }
+
+    function showApp() {
+      STATE.loginExitGuard = false;
+      ELEMENTS.loginView.classList.add("hidden");
+      ELEMENTS.appView.classList.remove("hidden");
+      initializePortalHistory();
+      startServerClock();
+    }
+
+    function initializePortalHistory() {
+      const baseUrl = window.location.pathname + window.location.search;
+      STATE.portalHistoryKey = "dashboard||";
+      if (
+        window.google &&
+        google.script &&
+        google.script.history
+      ) {
+        google.script.history.replace(
+          { vupPortalGuard: true },
+          null,
+          "portal"
+        );
+        google.script.history.push(
+          { vupPortal: true, view: "dashboard", courseId: "", tab: "" },
+          null,
+          "dashboard"
+        );
+        return;
+      }
+      window.history.replaceState(
+        { vupPortalGuard: true },
+        "",
+        baseUrl + "#portal"
+      );
+      window.history.pushState(
+        { vupPortal: true, view: "dashboard", courseId: "", tab: "" },
+        "",
+        baseUrl + "#dashboard"
+      );
+    }
+
+    function writePortalHistory(view, options) {
+      const settings = options || {};
+      const state = {
+        vupPortal: true,
+        view: String(view || "dashboard"),
+        courseId: String(settings.courseId || ""),
+        tab: String(settings.tab || "")
+      };
+      const routeKey = state.view + "|" + state.courseId + "|" + state.tab;
+      const sameLocation = STATE.portalHistoryKey === routeKey;
+      STATE.portalHistoryKey = routeKey;
+      const hash = buildPortalHistoryHash(state.view, state.courseId, state.tab);
+      if (
+        window.google &&
+        google.script &&
+        google.script.history
+      ) {
+        if (settings.replace || sameLocation) {
+          google.script.history.replace(state, null, hash);
+        } else {
+          google.script.history.push(state, null, hash);
+        }
+        return;
+      }
+      const current = window.history.state || {};
+      const sameWindowLocation =
+        current.vupPortal === true &&
+        current.view === state.view &&
+        String(current.courseId || "") === state.courseId &&
+        String(current.tab || "") === state.tab;
+      const url = buildPortalHistoryUrl(state.view, state.courseId, state.tab);
+      if (settings.replace || sameWindowLocation) {
+        window.history.replaceState(state, "", url);
+      } else {
+        window.history.pushState(state, "", url);
+      }
+    }
+
+    function buildPortalHistoryHash(view, courseId, tab) {
+      if (view === "course" && courseId) {
+        return "course/" + encodeURIComponent(courseId) +
+          (tab ? "/" + encodeURIComponent(tab) : "");
+      }
+      return encodeURIComponent(view || "dashboard");
+    }
+
+    function buildPortalHistoryUrl(view, courseId, tab) {
+      const baseUrl = window.location.pathname + window.location.search;
+      if (view === "course" && courseId) {
+        return baseUrl + "#course/" + encodeURIComponent(courseId) +
+          (tab ? "/" + encodeURIComponent(tab) : "");
+      }
+      return baseUrl + "#" + encodeURIComponent(view || "dashboard");
+    }
+
+    function handlePortalPopState(event) {
+      if (handleLoginExitAttempt()) return;
+      if (!STATE.token || ELEMENTS.appView.classList.contains("hidden")) return;
+      const historyState = event.state || {};
+      const incomingKey =
+        String(historyState.view || "") + "|" +
+        String(historyState.courseId || "") + "|" +
+        String(historyState.tab || "");
+      if (
+        historyState.vupPortal &&
+        incomingKey === STATE.portalHistoryKey &&
+        String(historyState.view || "") === String(STATE.view || "") &&
+        (
+          historyState.view !== "course" ||
+          (
+            STATE.course &&
+            String(STATE.course.siteId || "") === String(historyState.courseId || "") &&
+            String(STATE.currentCourseTab || "overview") ===
+              String(historyState.tab || "overview")
+          )
+        )
+      ) {
+        return;
+      }
+      if (historyState.vupPortalGuard) {
+        STATE.portalHistoryKey = "";
+        writePortalHistory("dashboard");
+        navigate("dashboard", { fromHistory: true });
+        return;
+      }
+      if (
+        historyState.vupPortal &&
+        historyState.view === "course" &&
+        historyState.courseId
+      ) {
+        STATE.portalHistoryKey =
+          "course|" + String(historyState.courseId || "") + "|" +
+          String(historyState.tab || "overview");
+        openCourse(
+          historyState.courseId,
+          historyState.tab || "overview",
+          { fromHistory: true }
+        );
+        return;
+      }
+      if (historyState.vupPortal && historyState.view) {
+        STATE.portalHistoryKey =
+          String(historyState.view) + "||";
+        navigate(historyState.view, { fromHistory: true });
+        return;
+      }
+      STATE.portalHistoryKey = "";
+      writePortalHistory("dashboard");
+      navigate("dashboard", { fromHistory: true });
+    }
+
+    function handlePortalHistoryChange(event) {
+      handlePortalPopState({ state: event && event.state ? event.state : {} });
+    }
+
+    function clearSession() {
+      clearStoredSession();
+
+      if (STATE.serverClockTimer) {
+        window.clearInterval(STATE.serverClockTimer);
+      }
+      if (STATE.serverClockSyncTimer) {
+        window.clearTimeout(STATE.serverClockSyncTimer);
+      }
+      if (STATE.networkTimer) {
+        window.clearInterval(STATE.networkTimer);
+      }
+      if (STATE.idleTimer) window.clearInterval(STATE.idleTimer);
+
+      STATE.serverClockTimer = null;
+      STATE.serverClockSyncTimer = null;
+      STATE.networkTimer = null;
+      STATE.networkOnline = null;
+      STATE.idleTimer = null;
+      STATE.serverClockOffset = 0;
+      STATE.portalHistoryKey = "";
+      STATE.navigationVersion++;
+      STATE.listRequestVersion++;
+      STATE.token = "";
+      STATE.admin = null;
+      STATE.profile = null;
+      STATE.profileLoaded = false;
+      STATE.dashboard = null;
+      STATE.course = null;
+      STATE.courses = [];
+      STATE.trashCourses = [];
+      STATE.selectedCourseIds = [];
+      STATE.selectedTrashIds = [];
+      STATE.courseListCache = {};
+      STATE.dashboardFetchedAt = 0;
+      STATE.loaderCount = 0;
+      // 계정을 바꿔 로그인했을 때 이전 계정의 설문 데이터가 남지 않도록 함께 비웁니다.
+      STATE.satisfactionTab = "create";
+      STATE.satisfactionType = "lecture";
+      STATE.satisfactionLectures = [];
+      STATE.satisfactionFolder = null;
+      STATE.satisfactionList = null;
+      STATE.satisfactionPrograms = [];
+      STATE.satisfactionFilter = { programName: "", formType: "" };
+      STATE.satisfactionAnalysis = null;
+      STATE.satisfactionInstructors = null;
+      STATE.satisfactionAnalysisMode = "survey";
+      STATE.satisfactionStep = 1;
+      STATE.satisfactionCountsLoading = false;
+      STATE.roster = null;
+      STATE.rosterRoomDraft = null;
+      ELEMENTS.portalLoader.classList.add("hidden");
+    }
+
+    function persistSession(expiresAt) {
+      STATE.sessionExpiresAt = new Date(expiresAt || 0).getTime();
+      try {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+          token: STATE.token,
+          expiresAt: STATE.sessionExpiresAt
+        }));
+      } catch (error) {}
+      startIdleGuard();
+    }
+
+    function restoreStoredSession() {
+      let stored = null;
+      try { stored = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null"); }
+      catch (error) { stored = null; }
+      if (!stored || !stored.token || Number(stored.expiresAt || 0) <= Date.now()) {
+        clearStoredSession();
+        showLogin();
+        return;
+      }
+      STATE.token = String(stored.token);
+      STATE.sessionExpiresAt = Number(stored.expiresAt || 0);
+      showLoader("로그인 복구 중", "안전한 세션을 확인하고 있습니다.");
+      callServer("portalRestoreSession", STATE.token)
+        .then(function (result) {
+          applyBootstrap(result);
+          showApp();
+          startIdleGuard();
+          if (result.mustReplaceInitialPassword) {
+            showChangePasswordModal(true);
+            return Promise.resolve();
+          }
+          var restoredCourseId = getRequestedCourseId();
+          return restoredCourseId ? openCourse(restoredCourseId) : navigate("dashboard");
+        })
+        .catch(function () {
+          clearSession();
+          showLogin();
+        })
+        .finally(hideLoader);
+    }
+
+    function recordActivity() {
+      STATE.lastActivityAt = Date.now();
+    }
+
+    function startIdleGuard() {
+      recordActivity();
+      if (STATE.idleTimer) window.clearInterval(STATE.idleTimer);
+      STATE.idleTimer = window.setInterval(function () {
+        if (!STATE.token) return;
+        if (Date.now() >= Number(STATE.sessionExpiresAt || 0) ||
+            Date.now() - STATE.lastActivityAt >= CLIENT_IDLE_MS) {
+          handleLogout();
+          showToast("로그인이 만료되었습니다.", "보안을 위해 다시 로그인해주세요.", "warning");
+        }
+      }, 30000);
+    }
+
+    function navigate(view, navigationOptions) {
+      const target = String(view || "dashboard");
+      const navigation = navigationOptions || {};
+      if (STATE.view === "course" && STATE.pageBuilderDirty && target !== "course" && !navigation.skipPageBuilderGuard) {
+        showModal(
+          "저장하지 않은 사용자 화면 변경이 있습니다",
+          "지금 이동하면 방금 추가하거나 수정한 카드가 사라집니다.",
+          '<div class="warning-callout"><strong>실제 사용자 사이트에는 아직 반영되지 않았습니다.</strong><span>취소한 뒤 ‘변경사항 실제 사이트에 반영’을 먼저 눌러주세요.</span></div>',
+          '<button type="button" class="btn btn-secondary" data-modal-close>계속 편집</button><button type="button" class="btn btn-danger" data-discard-page-builder="' + escapeAttr(target) + '">변경 버리고 이동</button>'
+        );
+        return Promise.resolve(false);
+      }
+      const requestVersion = ++STATE.navigationVersion;
+      if (target === "developer-inquiries" && !(STATE.admin && STATE.admin.isDeveloper)) {
+        return Promise.resolve();
+      }
+      if (!navigation.fromHistory) {
+        writePortalHistory(target, {
+          replace: Boolean(navigation.replaceHistory)
+        });
+      }
+      STATE.view = target;
+      STATE.course = target === "course" ? STATE.course : null;
+      updateNavigationChrome(target);
+      closeSidebar();
+      ELEMENTS.contentRoot.scrollTop = 0;
+      window.scrollTo({ top: 0, behavior: "auto" });
+
+      if (target === "dashboard") return refreshDashboard(requestVersion, Boolean(navigation.forceRefresh));
+      if (target === "profile") {
+        return ensureProfileLoaded().then(function () {
+          if (STATE.view === "profile") renderProfile();
+        });
+      }
+      if (target === "create") {
+        // 담당자 이름·연락처를 프로필에서 자동 채우므로 먼저 확보합니다.
+        return ensureProfileLoaded().then(function () {
+          if (STATE.view === "create") renderCreateCourse();
+        });
+      }
+      if (target === "courses") return loadCourseList("all", requestVersion);
+      if (target === "history") return loadCourseList("history", requestVersion);
+      if (target === "satisfaction") return renderSatisfaction(requestVersion);
+      if (target === "inquiries") return loadInquiries(false, requestVersion);
+      if (target === "trash") return loadTrash(requestVersion);
+      if (target === "developer-inquiries") return loadInquiries(true, requestVersion);
+      return Promise.resolve();
+    }
+
+    function updateNavigationChrome(view) {
+      const displayName =
+        (STATE.profile && STATE.profile.name) ||
+        (STATE.admin && (STATE.admin.displayName || STATE.admin.id)) ||
+        "관리자";
+      const meta = VIEW_META[view] || VIEW_META.dashboard;
+      ELEMENTS.topbarEyebrow.textContent = meta.eyebrow;
+      ELEMENTS.topbarTitle.textContent = view === "dashboard"
+        ? displayName + "님의 " + meta.title
+        : meta.title;
+      document.querySelectorAll(".nav-item").forEach(function (item) {
+        const active = item.dataset.view === view;
+        item.classList.toggle("active", active);
+        if (active) item.setAttribute("aria-current", "page");
+        else item.removeAttribute("aria-current");
+      });
+    }
+
+    function refreshDashboard(requestVersion, forceRefresh) {
+      renderDashboard(STATE.dashboard || {});
+      if (
+        !forceRefresh &&
+        STATE.dashboardFetchedAt &&
+        Date.now() - STATE.dashboardFetchedAt < 15000
+      ) {
+        return Promise.resolve(STATE.dashboard);
+      }
+      return api("portalGetDashboard")
+        .then(function (dashboard) {
+          if (
+            requestVersion !== STATE.navigationVersion ||
+            STATE.view !== "dashboard"
+          ) return dashboard;
+          STATE.dashboard = dashboard;
+          STATE.dashboardFetchedAt = Date.now();
+          if (dashboard.profile) {
+            STATE.profile = dashboard.profile;
+            STATE.profileLoaded = true;
+          }
+          updateAccountChrome();
+          renderDashboard(dashboard);
+          return dashboard;
+        })
+        .catch(function (error) {
+          if (
+            requestVersion !== STATE.navigationVersion ||
+            STATE.view !== "dashboard"
+          ) return;
+          showToast("대시보드를 새로고침하지 못했습니다.", error.message, "error");
+        });
+    }
+
+    function renderDashboard(dashboard) {
+      const counts = dashboard.counts || {};
+      const metricTitles = dashboard.metricTitles || {};
+      const profile = STATE.profile || {};
+      const profileName =
+        profile.name ||
+        (STATE.admin && STATE.admin.displayName) ||
+        "관리자";
+      const storedCourseCount = Number(counts.all || 0);
+      const recent = (dashboard.recentCourses || []).slice(0, 2);
+      const attention = (dashboard.attentionCourses || []).slice(0, 4);
+      const upcomingCourse = dashboard.upcomingCourse || null;
+      const profilePhone = profile.landline || profile.mobile || "";
+      const profileIdentity = [
+        profile.name || profileName,
+        profile.position || ""
+      ].filter(Boolean).join(" ");
+      const profileWelcome =
+        profileIdentity +
+        (profilePhone ? " (" + profilePhone + ")" : "") +
+        "님, 환영합니다.";
+      const profileCallout = dashboard.profileComplete
+        ? '<div class="success-callout dashboard-profile-callout">' +
+            '<span class="dashboard-profile-copy">' +
+              '<strong>' + escapeHtml(profileWelcome) + '</strong>' +
+              '<span>만약 정보가 틀렸다면, 관리자 기본 정보를 변경해주세요.</span>' +
+            '</span>' +
+            '<button type="button" class="btn btn-small btn-secondary dashboard-profile-action" data-view="profile">지금 변경하기</button>' +
+          '</div>'
+        : '<div class="warning-callout dashboard-profile-callout">' +
+            '<span class="dashboard-profile-copy">' +
+              '<strong>먼저 관리자 기본 정보를 완성해주세요.</strong>' +
+              '<span>프로필을 한 번 저장하면 새 강의마다 담당자 이름과 연락처를 다시 입력하지 않아도 됩니다.</span>' +
+            '</span>' +
+            '<button type="button" class="btn btn-small btn-secondary dashboard-profile-action" data-view="profile">지금 입력하기</button>' +
+          '</div>';
+
+      ELEMENTS.contentRoot.innerHTML =
+        '<div class="page-stack">' +
+          '<section class="dashboard-hero">' +
+            '<div class="hero-copy">' +
+              '<p class="hero-eyebrow">' + escapeHtml(getGreetingLabel()) + '</p>' +
+              '<h2>' + escapeHtml(profileName) + '님,<br>관리자 페이지에 오신 것을 환영합니다.</h2>' +
+              '<p>개설한 강의의 준비 상태를 확인하고, 교육 현장에서 필요한 자료를 바로 업데이트할 수 있습니다.</p>' +
+              '<button type="button" class="btn hero-create-button" data-view="create">새로운 강의 정보 입력 &amp; 사용자 사이트 개설 시작하기 <span aria-hidden="true">🚀</span></button>' +
+            '</div>' +
+            '<div class="hero-side">' +
+              '<button type="button" class="hero-status hero-status-button" data-view="courses" aria-label="현재 보관중인 강좌 관리하기">' +
+                '<span class="hero-status-label"><span>현재 보관중인 강좌</span><span>강의 관리 →</span></span>' +
+                '<span class="hero-status-value"><strong>' + storedCourseCount + '</strong><span>개의 강좌</span></span>' +
+              '</button>' +
+              renderRecentVisits(dashboard.recentVisits) +
+            '</div>' +
+          '</section>' +
+          profileCallout +
+          '<section class="metric-grid">' +
+            metricCard("지금까지 내가 개설한 강의", counts.all || 0, metricTitles.all) +
+            metricCard("시작 예정인 강의", counts.upcoming || 0, metricTitles.upcoming) +
+            metricCard("현재 진행 중인 강의", counts.active || 0, metricTitles.active) +
+            metricCard("종료된 강의", counts.past || 0, metricTitles.past) +
+          '</section>' +
+          (attention.length
+            ? '<section class="panel panel-pad attention-center">' +
+                panelHeader("지금 확인할 강의", "준비가 덜 된 진행 예정·진행 중 강의를 우선 표시합니다.", "") +
+                '<div class="attention-list">' + attention.map(function (course) {
+                  return '<button type="button" class="attention-item" data-course="' + escapeAttr(course.siteId) + '">' +
+                    '<span><strong>' + escapeHtml(course.title || course.generation) + '</strong><small>' + escapeHtml(course.dateSummary || "") + '</small></span>' +
+                    '<b>' + Number(course.readinessPercent || 0) + '%</b></button>';
+                }).join("") + '</div></section>'
+            : '') +
+          renderDashboardOperationDesk(dashboard) +
+          '<section class="dashboard-columns">' +
+            '<div class="panel panel-pad">' +
+              panelHeader("최근 강의", "최근 개설하거나 수정한 교육을 바로 이어서 관리하세요.", '<button type="button" class="btn btn-text panel-header-link" data-view="courses">전체 보기 →</button>') +
+              (recent.length
+                ? '<div class="recent-course-table"><div class="recent-course-head"><span>구분 번호</span><span>강의명</span><span>개설 일자</span><span>진행 상황</span><span>바로가기</span></div>' +
+                    recent.map(renderRecentCourseRow).join("") + '</div>'
+                : renderEmpty("＋", "아직 개설된 강의가 없습니다.", "첫 강의를 개설하면 이곳에서 운영 상태를 확인할 수 있습니다.", "", "")) +
+            '</div>' +
+            '<div class="panel panel-pad">' +
+              panelHeader("곧 시작 예정인 교육", "교육 시작 전, 구축해둔 사용자 사이트를 점검하세요", "") +
+              (upcomingCourse
+                ? '<div class="upcoming-course-focus">' + renderUpcomingCourse(upcomingCourse) + '</div>'
+                : renderEmpty("◷", "예정된 교육이 없습니다.", "새 강의를 개설하면 가장 가까운 교육이 이곳에 표시됩니다.", "", "")) +
+            '</div>' +
+          '</section>' +
+        '</div>';
+    }
+
+    function renderDashboardOperationDesk(dashboard) {
+      const items = (dashboard && dashboard.operationDesk) || [];
+      const counts = (dashboard && dashboard.operationDeskCounts) || {};
+      if (!items.length) {
+        return '<section class="panel panel-pad dashboard-operation-desk is-clear">' +
+          '<div class="operation-desk-clear"><span>✓</span><div><strong>7일 안에 마감되는 운영 업무가 없습니다.</strong>' +
+          '<p>각 강의의 운영 센터에서 담당자와 마감일을 지정하면 이곳에 자동으로 모입니다.</p></div></div></section>';
+      }
+      return '<section class="panel panel-pad dashboard-operation-desk">' +
+        panelHeader("오늘의 운영 데스크", "모든 강의에서 지연되었거나 7일 안에 마감되는 업무를 모았습니다.",
+          '<div class="operation-desk-counts"><span class="is-overdue">지연 ' + Number(counts.overdue || 0) + '</span>' +
+          '<span>임박 ' + Number(counts.dueSoon || 0) + '</span></div>') +
+        '<div class="operation-desk-list">' + items.slice(0, 8).map(function (item) {
+          return '<button type="button" class="operation-desk-item' + (item.overdue ? ' is-overdue' : '') +
+            '" data-course="' + escapeAttr(item.siteId) + '" data-open-course-tab="operations">' +
+            '<span class="operation-desk-date">' + (item.overdue ? '지연' : formatShortDate(item.dueDate)) + '</span>' +
+            '<span class="operation-desk-copy"><strong>' + escapeHtml(item.taskTitle) + '</strong>' +
+              '<small>' + escapeHtml(item.courseTitle) + (item.owner ? ' · ' + escapeHtml(item.owner) : ' · 담당자 미지정') + '</small></span>' +
+            '<span class="operation-desk-go">열기 →</span></button>';
+        }).join("") + '</div></section>';
+    }
+
+    function loadCourseList(filter, navigationVersion) {
+      const requestedFilter = String(filter || "all");
+      const expectedView = STATE.view === "history" ? "history" : "courses";
+      const requestNavigationVersion =
+        Number(navigationVersion || STATE.navigationVersion);
+      const listRequestVersion = ++STATE.listRequestVersion;
+
+      STATE.listFilter = requestedFilter === "history"
+        ? "history"
+        : ["all", "manage", "blocked"].indexOf(requestedFilter) !== -1
+          ? requestedFilter
+          : "all";
+
+      STATE.courseDeleteMode = false;
+      STATE.selectedCourseIds = [];
+
+      const cacheKey = [
+        expectedView,
+        STATE.listFilter,
+        STATE.listSearch
+      ].join("|");
+      const cachedCourses = STATE.courseListCache[cacheKey];
+      if (cachedCourses) {
+        STATE.courses = cachedCourses.slice();
+        renderCourseList(expectedView === "history" ? "history" : "manage");
+      } else {
+        renderCourseListLoading(STATE.listFilter);
+      }
+
+      return api("portalListCourses", {
+        filter: STATE.listFilter,
+        scope: expectedView === "history" ? "history" : "operations",
+        search: STATE.listSearch
+      })
+        .then(function (result) {
+          if (
+            listRequestVersion !== STATE.listRequestVersion ||
+            requestNavigationVersion !== STATE.navigationVersion ||
+            STATE.view !== expectedView
+          ) return result;
+          STATE.courses = result.courses || [];
+          STATE.courseListCache[cacheKey] = STATE.courses.slice();
+          renderCourseList(expectedView === "history" ? "history" : "manage");
+          return result;
+        })
+        .catch(function (error) {
+          if (
+            listRequestVersion !== STATE.listRequestVersion ||
+            requestNavigationVersion !== STATE.navigationVersion ||
+            STATE.view !== expectedView
+          ) return;
+          renderPageError(
+            "강의 목록을 불러오지 못했습니다.",
+            error.message
+          );
+        });
+    }
+
+    function renderCourseListLoading(filter) {
+  const history = filter === "history";
+
+  ELEMENTS.contentRoot.innerHTML =
+    '<div class="page-stack">' +
+      pageHeading(
+        history ? "과거 기록보기" : "개설된 강의 관리하기",
+        history
+          ? "종료했거나 사용자 사이트 운영을 중단한 교육 기록을 확인합니다."
+          : "교육 시작 전부터 종료 이후까지 필요한 항목을 실시간으로 관리합니다.",
+        ""
+      ) +
+      '<div class="panel">' +
+        '<div class="empty-state">' +
+          '<span class="inline-progress"><span></span></span>' +
+          '<h3>강의 목록을 불러오는 중입니다.</h3>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+    }
+
+    function renderCourseList(filter) {
+  const history = filter === "history";
+  const courses = STATE.courses || [];
+  const selectedCount = STATE.selectedCourseIds.length;
+
+  const headingActions = history
+    ? ""
+    : STATE.courseDeleteMode
+      ? '<button type="button" class="btn btn-secondary" data-action="cancel-course-delete">삭제 선택 취소</button>'
+      : '<button type="button" class="btn btn-danger" data-action="toggle-course-delete">강의 삭제하기</button>';
+
+  const bulkToolbar =
+    !history && STATE.courseDeleteMode
+      ? '<div class="bulk-action-bar">' +
+          '<span><strong>' + selectedCount + '개 선택</strong><small>선택한 강의는 휴지통으로 이동하며 30일 동안 복구할 수 있습니다.</small></span>' +
+          '<label class="select-all-check"><input type="checkbox" data-select-all-courses' + (courses.length && selectedCount === courses.length ? ' checked' : '') + '> 전체 선택</label>' +
+          '<button type="button" class="btn btn-danger" data-action="move-selected-courses"' +
+            (selectedCount ? "" : " disabled") +
+          '>선택 강의 휴지통으로 이동</button>' +
+        '</div>'
+      : "";
+
+  const filterTabs = history
+    ? '<button type="button" class="filter-tab ' +
+        (STATE.listFilter === "history" ? "active" : "") +
+        '" data-list-filter="history">종료된 교육</button>' +
+      '<button type="button" class="filter-tab ' +
+        (STATE.listFilter === "blocked" ? "active" : "") +
+        '" data-list-filter="blocked">사용자 사이트 운영 중단</button>' +
+      '<button type="button" class="filter-tab ' +
+        (STATE.listFilter === "all" ? "active" : "") +
+        '" data-list-filter="all">전체</button>'
+    : '<button type="button" class="filter-tab ' +
+        (STATE.listFilter === "all" ? "active" : "") +
+        '" data-list-filter="all">전체</button>' +
+      '<button type="button" class="filter-tab ' +
+        (STATE.listFilter === "manage" ? "active" : "") +
+        '" data-list-filter="manage">관리중</button>' +
+      '<button type="button" class="filter-tab ' +
+        (STATE.listFilter === "blocked" ? "active" : "") +
+        '" data-list-filter="blocked">사용자 사이트 운영 중단</button>';
+
+  ELEMENTS.contentRoot.innerHTML =
+    '<div class="page-stack">' +
+      pageHeading(
+        history ? "과거 기록보기" : "개설된 강의 관리하기",
+        history
+          ? "종료되었거나 사용자 사이트 운영을 중단한 강의 기록입니다."
+          : "교육 시작 전부터 종료 이후까지 필요한 항목을 실시간으로 관리합니다.",
+        headingActions
+      ) +
+
+      '<div class="filter-toolbar">' +
+        '<div class="filter-tabs">' + filterTabs + '</div>' +
+        '<label class="search-box">' +
+          '<input id="courseSearchInput" type="search" ' +
+            'placeholder="교육명, 기수, 담당자로 검색" ' +
+            'value="' + escapeAttr(STATE.listSearch) + '">' +
+        '</label>' +
+      '</div>' +
+
+      bulkToolbar +
+
+      (courses.length
+        ? '<div class="course-card-grid">' +
+            courses.map(renderCourseCard).join("") +
+          '</div>'
+        : '<div class="panel">' +
+            renderEmpty(
+              history ? "◷" : "▦",
+              history
+                ? "조건에 해당하는 과거 기록이 없습니다."
+                : "조건에 해당하는 강의가 없습니다.",
+              history
+                ? "종료되거나 운영이 중단된 강의가 이곳에 표시됩니다."
+                : "다른 필터를 선택하거나 새로운 강의를 개설해주세요.",
+              "",
+              ""
+            ) +
+          '</div>') +
+    '</div>';
+    }
+
+    function renderCourseCard(course) {
+  const ownerLine =
+    STATE.admin && STATE.admin.isDeveloper
+      ? '<span>담당 계정 · ' +
+          escapeHtml(course.ownerId || "미배정") +
+        '</span>'
+      : "";
+
+  const selected =
+    STATE.selectedCourseIds.indexOf(course.siteId) !== -1;
+
+  const selectionControl = STATE.courseDeleteMode
+    ? '<label class="course-select-check">' +
+        '<input type="checkbox" data-course-select="' +
+          escapeAttr(course.siteId) +
+        '"' + (selected ? " checked" : "") + ">" +
+        '<span>선택</span>' +
+      '</label>'
+    : "";
+
+  const footer = STATE.courseDeleteMode
+    ? '<div class="selection-help">휴지통으로 이동할 강의를 선택해주세요.</div>'
+    : '<div class="readiness-mini">' +
+        '<span>운영 준비 ' +
+          Number(course.readinessPercent || 0) +
+        '%</span>' +
+        '<span class="mini-progress"><span style="width:' +
+          clamp(course.readinessPercent, 0, 100) +
+        '%"></span></span>' +
+      '</div>' +
+      '<div class="course-card-actions">' +
+        '<button type="button" class="btn btn-ghost btn-small" data-duplicate-course="' +
+          escapeAttr(course.siteId) + '" title="이 교육의 설정을 그대로 가져와 새 교육 만들기">복제</button>' +
+        '<button type="button" class="btn btn-secondary btn-small" data-course="' +
+          escapeAttr(course.siteId) + '">운영 관리</button>' +
+      '</div>';
+
+  return '<article class="course-card' +
+      (STATE.courseDeleteMode ? " selection-mode" : "") +
+      '">' +
+
+      '<div class="course-card-head">' +
+        '<div class="course-card-head-left">' +
+          selectionControl +
+          statusChip(course.phase, course.phaseLabel) +
+        '</div>' +
+        '<span class="inquiry-meta">' +
+          escapeHtml(course.createdAt || "") +
+        '</span>' +
+      '</div>' +
+
+      '<h3>' +
+        escapeHtml(course.title || course.generation || "제목 없는 강의") +
+      '</h3>' +
+
+      '<div class="course-card-meta">' +
+        '<span>일정 · ' +
+          escapeHtml(course.dateSummary || "미등록") +
+        '</span>' +
+        '<span>담당자 · ' +
+          escapeHtml(course.managerName || "미등록") +
+        '</span>' +
+        ownerLine +
+      '</div>' +
+
+      '<div class="course-card-footer">' +
+        footer +
+      '</div>' +
+    '</article>';
+    }
+
+    function loadTrash(navigationVersion) {
+  const requestNavigationVersion =
+    Number(navigationVersion || STATE.navigationVersion);
+  if (STATE.view !== "trash") return Promise.resolve();
+  STATE.selectedTrashIds = [];
+
+  ELEMENTS.contentRoot.innerHTML =
+    '<div class="page-stack">' +
+      pageHeading(
+        "휴지통",
+        "삭제한 강의를 복구하거나 시스템에서 완전히 삭제할 수 있습니다.",
+        ""
+      ) +
+      '<div class="panel">' +
+        '<div class="empty-state">' +
+          '<span class="inline-progress"><span></span></span>' +
+          '<h3>휴지통을 확인하고 있습니다.</h3>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  return api("portalListTrash")
+    .then(function (result) {
+      if (
+        requestNavigationVersion !== STATE.navigationVersion ||
+        STATE.view !== "trash"
+      ) return result;
+      STATE.trashCourses = result.courses || [];
+      setBadge(ELEMENTS.trashBadge, STATE.trashCourses.length);
+      renderTrash();
+    })
+    .catch(function (error) {
+      if (
+        requestNavigationVersion !== STATE.navigationVersion ||
+        STATE.view !== "trash"
+      ) return;
+      renderPageError(
+        "휴지통을 불러오지 못했습니다.",
+        error.message
+      );
+    });
+    }
+
+    function renderTrash() {
+  const courses = STATE.trashCourses || [];
+  const selectedCount = STATE.selectedTrashIds.length;
+
+  const actions =
+    '<button type="button" class="btn btn-secondary" data-action="restore-selected-courses"' +
+      (selectedCount ? "" : " disabled") +
+    '>복구하기</button>' +
+    '<button type="button" class="btn btn-danger" data-action="purge-selected-courses"' +
+      (selectedCount ? "" : " disabled") +
+    '>영구 삭제</button>';
+
+  ELEMENTS.contentRoot.innerHTML =
+    '<div class="page-stack">' +
+      pageHeading(
+        "휴지통",
+        "삭제한 강의를 원래 상태로 복구하거나 관리 기록을 영구 삭제할 수 있습니다.",
+        actions
+      ) +
+
+      '<div class="warning-callout trash-retention-notice">' +
+        '<strong>자동 삭제 안내</strong>' +
+        '<span>30일이 지난 삭제 건은 자동으로 휴지통에서 삭제됩니다.</span>' +
+      '</div>' +
+
+      '<div class="bulk-action-bar">' +
+        '<span><strong>' + selectedCount + '개 선택</strong>' +
+        '<small>복구하거나 영구 삭제할 강의를 선택해주세요.</small></span>' +
+        '<label class="select-all-check"><input type="checkbox" data-select-all-trash' + (courses.length && selectedCount === courses.length ? ' checked' : '') + '> 전체 선택</label>' +
+      '</div>' +
+
+      (courses.length
+        ? '<div class="course-card-grid">' +
+            courses.map(renderTrashCard).join("") +
+          '</div>'
+        : '<div class="panel">' +
+            renderEmpty(
+              "♲",
+              "휴지통이 비어 있습니다.",
+              "삭제한 강의가 이곳에 최대 30일 동안 보관됩니다.",
+              "",
+              ""
+            ) +
+          '</div>') +
+    '</div>';
+    }
+
+    function renderTrashCard(course) {
+  const selected =
+    STATE.selectedTrashIds.indexOf(course.siteId) !== -1;
+  const purgeTime = new Date(course.purgeAt || 0).getTime();
+  const remainingDays = isFinite(purgeTime)
+    ? Math.max(0, Math.ceil((purgeTime - Date.now()) / 86400000))
+    : null;
+
+  return '<article class="course-card trash-course-card">' +
+      '<div class="course-card-head">' +
+        '<div class="course-card-head-left">' +
+          '<label class="course-select-check">' +
+            '<input type="checkbox" data-trash-select="' +
+              escapeAttr(course.siteId) +
+            '"' + (selected ? " checked" : "") + ">" +
+            '<span>선택</span>' +
+          '</label>' +
+          '<span class="status-chip status-blocked">휴지통</span>' +
+        '</div>' +
+      '</div>' +
+
+      '<h3>' +
+        escapeHtml(course.title || course.generation || "제목 없는 강의") +
+      '</h3>' +
+
+      '<div class="course-card-meta">' +
+        '<span>담당자 · ' +
+          escapeHtml(course.managerName || "미등록") +
+        '</span>' +
+        '<span>삭제일 · ' +
+          escapeHtml(course.deletedAt || "확인 불가") +
+        '</span>' +
+        '<span>자동 삭제 예정 · ' +
+          escapeHtml(course.purgeAt || "확인 불가") +
+        '</span>' +
+        (remainingDays == null ? '' : '<span class="trash-days">복구 가능 · ' + remainingDays + '일 남음</span>') +
+      '</div>' +
+
+      '<div class="course-card-footer">' +
+        '<span class="selection-help">복구 또는 영구 삭제할 항목을 선택하세요.</span>' +
+      '</div>' +
+    '</article>';
+    }
+
+    /** 히어로 오른쪽 아래에 붙는 최근 접속 관리자 카드 */
+    function renderRecentVisits(visits) {
+      const list = Array.isArray(visits) ? visits : [];
+      return '<div class="hero-status hero-visits">' +
+        '<span class="hero-status-label"><span>최근 접속 관리자</span></span>' +
+        (list.length
+          ? '<ul class="hero-visit-list">' + list.map(function (visit) {
+              return '<li>' +
+                '<span class="hero-visit-who">' +
+                  '<i class="hero-visit-dot ' + (visit.online ? "is-online" : "is-offline") + '"></i>' +
+                  '<span class="hero-visit-name">' + escapeHtml(visit.name) +
+                    (visit.isMe ? ' <em>(나)</em>' : '') + '</span>' +
+                  '<span class="hero-visit-state">' + (visit.online ? "접속중" : "로그아웃") + '</span>' +
+                '</span>' +
+                '<span class="hero-visit-at">' + escapeHtml(visit.atText || "-") + '</span>' +
+              '</li>';
+            }).join("") + '</ul>'
+          : '<p class="hero-visit-empty">아직 기록된 접속이 없습니다.</p>') +
+      '</div>';
+    }
+
+    function metricCard(label, value, titles) {
+      return '<div class="metric-card"><span class="metric-label">' + escapeHtml(label) +
+        '</span><div class="metric-value"><strong>' + Number(value || 0) +
+        '</strong><span>개</span></div>' + metricCardTitleList(titles) + '</div>';
+    }
+
+    /* 지표 카드 아래쪽에 해당 구분의 교육명을 최대 2줄까지 보여줍니다.
+       보여줄 교육이 없는 줄은 첫 줄에만 회색 안내문을 두고,
+       나머지 줄은 카드 높이를 유지하기 위한 빈 줄로 남깁니다. */
+    function metricCardTitleList(titles) {
+      const list = (Array.isArray(titles) ? titles : [])
+        .filter(function (title) { return String(title || "").trim(); })
+        .slice(0, METRIC_TITLE_ROWS);
+      let rows = "";
+
+      for (let index = 0; index < METRIC_TITLE_ROWS; index++) {
+        if (index < list.length) {
+          rows += '<li class="metric-title-item">' +
+            '<i class="metric-title-dot" aria-hidden="true"></i>' +
+            '<span>' + escapeHtml(list[index]) + '</span></li>';
+        } else if (index === list.length) {
+          rows += '<li class="metric-title-item is-empty">' +
+            '<i class="metric-title-dot" aria-hidden="true"></i>' +
+            '<span>해당란에 표시될 교육이 없습니다.</span></li>';
+        } else {
+          rows += '<li class="metric-title-item is-blank" aria-hidden="true">' +
+            '<i class="metric-title-dot" aria-hidden="true"></i><span></span></li>';
+        }
+      }
+
+      return '<ul class="metric-title-list">' + rows + '</ul>';
+    }
+
+    function renderRecentCourseRow(course, index) {
+      return '<article class="recent-course-row">' +
+        '<span class="recent-course-index">' + (Number(index) + 1) + '</span>' +
+        '<strong>' + escapeHtml(course.title || course.generation || "제목 없는 강의") + '</strong>' +
+        '<span>' + escapeHtml(course.createdAt || "확인 불가") + '</span>' +
+        '<span>' + statusChip(course.phase, course.phaseLabel) + '</span>' +
+        '<button type="button" class="btn btn-secondary btn-small" data-course="' + escapeAttr(course.siteId) + '">바로가기 →</button>' +
+      '</article>';
+    }
+
+    function renderUpcomingCourse(course) {
+      return '<article class="upcoming-course-card">' +
+        '<span class="course-date-tile">' + escapeHtml(shortCourseDate(course)) + '</span>' +
+        '<strong>' + escapeHtml(course.title || course.generation || "제목 없는 강의") + '</strong>' +
+        '<span>' + escapeHtml(course.dateSummary || "일정 미등록") + '</span>' +
+        '<span>준비율 ' + Number(course.readinessPercent || 0) + '%</span>' +
+        '<button type="button" class="btn btn-primary btn-small" data-course="' + escapeAttr(course.siteId) + '">사용자 사이트 점검하기</button>' +
+      '</article>';
+    }
+
+    function renderProfile() {
+      const profile = STATE.profile || {};
+      const birthday = String(profile.birthday || "");
+      ELEMENTS.contentRoot.innerHTML =
+        '<div class="page-stack">' +
+          pageHeading("관리자 기본 정보", "강의를 개설할 때 자동으로 불러올 담당자 정보를 관리합니다.",
+            '<button type="button" class="btn profile-side-button" data-action="change-password">비밀번호 변경</button>') +
+          '<form id="profileForm" class="panel panel-pad profile-form-panel" novalidate>' +
+            panelHeader("나의 운영 프로필", "입력한 정보는 본인이 개설하는 강의의 기본 담당자 정보로 사용됩니다.", "") +
+            '<div class="form-grid profile-form-grid">' +
+              profileInput("profileName", "이름", profile.name, "예: 오찬희", true, "text") +
+              profileInput("profileOrganization", "소속 기관명", profile.organization, "예: 한국벤처캐피탈협회", true, "text") +
+              profileInput("profilePosition", "직책", profile.position, "예: 연구원", true, "text") +
+              profileInput("profileLandline", "유선번호", profile.landline, "예: 02-3017-XXXX", true, "tel") +
+              profileInput("profileMobile", "휴대폰번호", profile.mobile, "예: 010-1234-5678", false, "tel") +
+              profileInput("profileEmail", "이메일", profile.email, "예: manager@kvca.or.kr", true, "email") +
+            '</div>' +
+            renderProfileDisclosure(profile) +
+            '<div class="info-callout profile-auto-note"><strong>자동 입력 안내</strong>' +
+              '<span>새 강의 개설 시, 이곳에 입력해주신 이름과 직책, 전화번호가 ' +
+              '교육 담당자 정보로 사용됩니다.<br>' +
+              '교육별로 담당자 정보 편집은 가능하니, 실제 해당 계정의 주인 정보를 ' +
+              '입력해주세요.</span></div>' +
+            '<div class="form-actions profile-save-actions">' +
+              '<button type="submit" class="btn btn-primary profile-save-button">저장하기</button>' +
+            '</div>' +
+            '<input type="hidden" id="profileBirthday" value="' + escapeAttr(birthday) + '">' +
+          '</form>' +
+        '</div>';
+    }
+
+    /** 공개 항목을 항목마다 두지 않고 맨 아래 한 줄로 모읍니다. */
+    function renderProfileDisclosure(profile) {
+      const items = [
+        ["profilePublicLandline", "유선번호", profile.publicLandline !== false],
+        ["profilePublicMobile", "휴대폰번호", Boolean(profile.publicMobile)],
+        ["profilePublicEmail", "이메일 주소", profile.publicEmail !== false]
+      ];
+      return '<div class="profile-disclosure">' +
+        '<strong class="profile-disclosure-title">교육생에게 공개할 정보 체크</strong>' +
+        '<div class="profile-disclosure-items">' +
+          items.map(function (item) {
+            return '<label class="profile-disclosure-check" for="' + item[0] + '">' +
+              '<input id="' + item[0] + '" type="checkbox"' + (item[2] ? " checked" : "") + '>' +
+              '<span>' + escapeHtml(item[1]) + '</span></label>';
+          }).join("") +
+        '</div>' +
+      '</div>';
+    }
+
+    function profileInput(id, label, value, placeholder, required, type) {
+      return '<div class="form-field profile-form-field">' +
+        '<label for="' + id + '" class="' + (required ? "required" : "") + '">' + escapeHtml(label) + '</label>' +
+        '<input id="' + id + '" type="' + (type || "text") + '" value="' + escapeAttr(value || "") + '" placeholder="' + escapeAttr(placeholder || "") + '"' + (required ? " required" : "") + '>' +
+        '<span id="' + id + 'Error" class="field-error hidden" role="alert"></span>' +
+      '</div>';
+    }
+
+    function loadInquiries(developerMode, navigationVersion) {
+      const expectedView = developerMode ? "developer-inquiries" : "inquiries";
+      const requestNavigationVersion =
+        Number(navigationVersion || STATE.navigationVersion);
+      if (STATE.view !== expectedView) return Promise.resolve();
+      ELEMENTS.contentRoot.innerHTML =
+        '<div class="panel"><div class="empty-state"><span class="inline-progress"><span></span></span><h3>문의 내역을 불러오는 중입니다.</h3></div></div>';
+      return api("portalListInquiries")
+        .then(function (result) {
+          if (
+            requestNavigationVersion !== STATE.navigationVersion ||
+            STATE.view !== expectedView
+          ) return result;
+          STATE.inquiries = result.inquiries || [];
+          const pending = STATE.inquiries.filter(function (item) { return item.status !== "답변완료"; }).length;
+          if (STATE.admin && STATE.admin.isDeveloper) setBadge(ELEMENTS.inquiryBadge, pending);
+          if (developerMode) renderDeveloperInquiries();
+          else renderMyInquiries();
+        })
+        .catch(function (error) {
+          if (
+            requestNavigationVersion !== STATE.navigationVersion ||
+            STATE.view !== expectedView
+          ) return;
+          renderPageError("문의 내역을 불러오지 못했습니다.", error.message);
+        });
+    }
+
+    function renderMyInquiries() {
+      ELEMENTS.contentRoot.innerHTML =
+        '<div class="page-stack">' +
+          pageHeading("문의 사항", "프로그램 사용 중 궁금한 점이나 개선 요청을 총괄 개발자에게 남겨주세요.", "") +
+          '<div class="inquiry-layout">' +
+            '<form id="inquiryForm" class="panel panel-pad">' +
+              panelHeader("새 문의 작성", "운영 중인 강의와 상황을 구체적으로 적어주시면 더 빠르게 답변할 수 있습니다.", "") +
+              '<div class="form-field"><label for="inquirySubject" class="required">제목</label><input id="inquirySubject" maxlength="160" placeholder="문의 제목"></div>' +
+              '<div class="form-field" style="margin-top:16px"><label for="inquiryBody" class="required">문의 내용</label><textarea id="inquiryBody" maxlength="5000" style="min-height:210px" placeholder="어떤 강의에서, 무엇을 하다가 문제가 발생했는지 적어주세요."></textarea></div>' +
+              '<div class="form-actions"><button type="submit" class="btn btn-primary">문의 등록하기</button></div>' +
+            '</form>' +
+            '<div class="panel panel-pad">' +
+              panelHeader("나의 문의 내역", "답변이 완료되면 아래에서 바로 확인할 수 있습니다.", "") +
+              (STATE.inquiries.length ? '<div class="inquiry-list">' + STATE.inquiries.map(renderInquiryCard).join("") + '</div>' : renderEmpty("?", "아직 등록한 문의가 없습니다.", "프로그램 사용 중 도움이 필요하면 언제든 문의를 남겨주세요.", "", "")) +
+            '</div>' +
+          '</div>' +
+        '</div>';
+    }
+
+    function renderDeveloperInquiries() {
+      const pending = STATE.inquiries.filter(function (item) { return item.status !== "답변완료"; });
+      const answered = STATE.inquiries.filter(function (item) { return item.status === "답변완료"; });
+      ELEMENTS.contentRoot.innerHTML =
+        '<div class="page-stack">' +
+          pageHeading("문의사항 답변하기", "각 관리자 계정에서 접수한 문의를 확인하고 답변합니다.", '<span class="status-chip status-' + (pending.length ? "blocked" : "active") + '">' + pending.length + '건 대기</span>') +
+          '<div class="panel panel-pad">' +
+            panelHeader("답변 대기", "새 문의부터 순서대로 답변해주세요.", "") +
+            (pending.length ? '<div class="inquiry-list">' + pending.map(renderDeveloperInquiryCard).join("") + '</div>' : '<div class="success-callout"><strong>모든 문의에 답변했습니다.</strong><span>현재 답변을 기다리는 관리자가 없습니다.</span></div>') +
+          '</div>' +
+          '<div class="panel panel-pad">' +
+            panelHeader("답변 완료", "과거 답변 기록입니다.", "") +
+            (answered.length ? '<div class="inquiry-list">' + answered.map(renderInquiryCard).join("") + '</div>' : renderEmpty("✓", "완료된 답변이 없습니다.", "", "", "")) +
+          '</div>' +
+        '</div>';
+    }
+
+    function renderInquiryCard(inquiry) {
+      return '<article class="inquiry-card">' +
+        '<div class="inquiry-head"><span class="status-chip ' + (inquiry.status === "답변완료" ? "status-active" : "status-upcoming") + '">' + escapeHtml(inquiry.status) + '</span><span class="inquiry-meta">' + escapeHtml(inquiry.createdAt || "") + '</span></div>' +
+        '<h4>' + escapeHtml(inquiry.subject) + '</h4><p>' + escapeHtml(inquiry.body) + '</p>' +
+        (inquiry.reply ? '<div class="reply-box"><strong>개발자 답변</strong><br>' + escapeHtml(inquiry.reply) + '<br><span class="inquiry-meta">' + escapeHtml(inquiry.repliedAt || "") + '</span></div>' : "") +
+      '</article>';
+    }
+
+    function isLoginLockInquiry(inquiry) {
+      return String((inquiry && inquiry.inquiryId) || "").indexOf("LOCK-") === 0;
+    }
+
+    /** 접속 제한 문의에만 붙는 조치 버튼 2종입니다. */
+    function renderLockActions(inquiry) {
+      if (!isLoginLockInquiry(inquiry)) return "";
+      const adminId = escapeAttr(inquiry.authorId || "");
+      const adminName = escapeAttr(inquiry.authorName || "");
+      return '<div class="warning-callout lock-action-box" style="margin-top:14px">' +
+          '<strong>접속이 제한된 계정입니다</strong>' +
+          '<span>아래 중 하나를 선택하면 문의가 자동으로 답변 완료 처리됩니다.</span>' +
+          '<div class="lock-action-buttons">' +
+            '<button type="button" class="btn btn-danger btn-small" data-action="reset-admin-password"' +
+              ' data-admin-id="' + adminId + '" data-admin-name="' + adminName + '">' +
+              '비밀번호 초기화 (1234)</button>' +
+            '<button type="button" class="btn btn-secondary btn-small" data-action="unlock-admin"' +
+              ' data-admin-id="' + adminId + '" data-admin-name="' + adminName + '">' +
+              '접속 제한 풀어주기</button>' +
+          '</div>' +
+        '</div>';
+    }
+
+    function renderDeveloperInquiryCard(inquiry) {
+      return '<article class="inquiry-card">' +
+        '<div class="inquiry-head"><span class="status-chip status-' + (isLoginLockInquiry(inquiry) ? "blocked" : "upcoming") + '">' + (isLoginLockInquiry(inquiry) ? "접속 제한" : "답변 대기") + '</span><span class="inquiry-meta">' + escapeHtml(inquiry.authorName + " · " + inquiry.authorId + " · " + inquiry.createdAt) + '</span></div>' +
+        '<h4>' + escapeHtml(inquiry.subject) + '</h4><p>' + escapeHtml(inquiry.body) + '</p>' +
+        renderLockActions(inquiry) +
+        '<form class="replyForm" data-inquiry-id="' + escapeAttr(inquiry.inquiryId) + '" style="margin-top:14px"><div class="form-field"><label>답변 내용</label><textarea name="reply" maxlength="5000" placeholder="관리자에게 전달할 답변을 작성해주세요."></textarea></div><div class="form-actions" style="margin-top:12px;padding-top:12px"><button type="submit" class="btn btn-primary btn-small">답변 저장하기</button></div></form>' +
+      '</article>';
+    }
+
+    function handleContentClick(event) {
+      // 설정 묶음 접기/펴기
+      const settingGroupHead = event.target.closest("[data-setting-group]");
+      if (settingGroupHead) {
+        const key = settingGroupHead.dataset.settingGroup;
+        STATE.settingGroupOpen[key] = STATE.settingGroupOpen[key] === false;
+        updateCourseTabContent();
+        return;
+      }
+
+      // 자리 배정 단계 이동
+      const stepButton = event.target.closest("[data-seating-step]");
+      if (stepButton) {
+        STATE.seatingStep = stepButton.dataset.seatingStep;
+        updateCourseTabContent();
+        return;
+      }
+
+      // 자동 / 수동 선택
+      const modeButton = event.target.closest("[data-seating-mode]");
+      if (modeButton) {
+        const parts = String(modeButton.dataset.seatingMode).split(":");
+        STATE.seatingMode[parts[0]] = parts[1] || "";
+        updateCourseTabContent();
+        return;
+      }
+
+      // 명부 필터
+      const rosterFilterTab = event.target.closest("[data-roster-filter]");
+      if (rosterFilterTab) {
+        STATE.rosterFilter = rosterFilterTab.dataset.rosterFilter;
+        updateCourseTabContent();
+        return;
+      }
+
+      // 좌석표 / 방 배정 편집 (다른 처리보다 먼저)
+      const seatCell = event.target.closest("[data-seat]");
+      if (seatCell) { handleSeatCellClick(seatCell); return; }
+      const roomPerson = event.target.closest("[data-room-person]");
+      if (roomPerson) { handleRoomPersonClick(roomPerson); return; }
+
+      // 강의 복제 (data-course 처리보다 먼저 가로챕니다)
+      const duplicate = event.target.closest("[data-duplicate-course]");
+      if (duplicate) {
+        event.preventDefault();
+        event.stopPropagation();
+        openDuplicateCourseModal(duplicate.dataset.duplicateCourse);
+        return;
+      }
+      const courseButton = event.target.closest("[data-course]");
+      if (courseButton) {
+        openCourse(courseButton.dataset.course, courseButton.dataset.openCourseTab || "overview");
+        return;
+      }
+
+      const viewButton = event.target.closest("[data-view]");
+      if (viewButton) {
+        navigate(viewButton.dataset.view);
+        return;
+      }
+
+      const tabButton = event.target.closest("[data-course-tab]");
+      if (tabButton) {
+        STATE.currentCourseTab = tabButton.dataset.courseTab;
+        if (STATE.course && STATE.course.siteId) {
+          writePortalHistory("course", {
+            courseId: STATE.course.siteId,
+            tab: STATE.currentCourseTab
+          });
+        }
+        updateCourseTabContent();
+        loadCourseTabResources(STATE.currentCourseTab);
+        return;
+      }
+
+      const filterButton = event.target.closest("[data-list-filter]");
+      if (filterButton) {
+        STATE.listFilter = filterButton.dataset.listFilter;
+        loadCourseList(STATE.listFilter, STATE.navigationVersion);
+        return;
+      }
+
+      const satisfactionTab = event.target.closest("[data-satisfaction-tab]");
+      if (satisfactionTab) {
+        STATE.satisfactionTab = satisfactionTab.dataset.satisfactionTab;
+        renderSatisfactionTab();
+        return;
+      }
+
+      const surveyTypeFilter = event.target.closest("[data-survey-type-filter]");
+      if (surveyTypeFilter) {
+        STATE.satisfactionFilter.formType = surveyTypeFilter.dataset.surveyTypeFilter;
+        loadSatisfactionList(false);
+        return;
+      }
+
+      const analysisMode = event.target.closest("[data-survey-analysis-mode]");
+      if (analysisMode) {
+        STATE.satisfactionAnalysisMode = analysisMode.dataset.surveyAnalysisMode;
+        renderSatisfactionAnalysisTab();
+        return;
+      }
+
+      const analyzeButton = event.target.closest("[data-survey-analyze]");
+      if (analyzeButton) {
+        loadSatisfactionAnalysis(analyzeButton.dataset.surveyAnalyze);
+        return;
+      }
+
+      const action = event.target.closest("[data-action]");
+      if (action) handleAction(action.dataset.action, action);
+
+      const deleteButton = event.target.closest("[data-delete-file]");
+      if (deleteButton) {
+        confirmDeleteFile(
+          deleteButton.dataset.deleteFile,
+          deleteButton.dataset.fileType,
+          deleteButton.dataset.fileName
+        );
+      }
+    }
+
+    function handleAction(action, element) {
+      if (action === "copy-user-url") return copyText(STATE.course.userUrl, "사용자 사이트 주소를 복사했습니다.");
+      if (action === "toggle-visibility") return confirmVisibility(element.dataset.visible === "true");
+      if (action === "edit-course") return showEditCourseModal();
+      if (action === "upload-material") return uploadSelectedFiles("material");
+      if (action === "upload-photo") return uploadSelectedFiles("photo");
+      if (action === "generate-meal") return generateMealAssignment();
+      if (action === "download-meal-template") return downloadMealTemplate();
+      if (action === "load-more-photos") return loadMorePhotos();
+      if (action === "change-password") return showChangePasswordModal(false);
+      if (action === "create-next-step") return moveCreateWizard(1);
+      if (action === "create-previous-step") return moveCreateWizard(-1);
+      if (action === "quick-create-course") return quickCreateCourse();
+      if (action === "add-user-page-block") return showUserPageBlockModal(element.dataset.blockType, -1, false);
+      if (action === "add-scheduled-page-block") return showUserPageBlockModal("custom-link", -1, true);
+      if (action === "edit-user-page-block") return showUserPageBlockModal("", Number(element.dataset.blockIndex), false);
+      if (action === "move-user-page-block") return moveUserPageBlock(element.dataset.blockIndex, element.dataset.direction);
+      if (action === "toggle-user-page-block") return toggleUserPageBlock(element.dataset.blockIndex);
+      if (action === "remove-user-page-block") return confirmRemoveUserPageBlock(element.dataset.blockIndex);
+      if (action === "save-user-page-layout") return saveUserPageLayout();
+      if (action === "operation-add-task") return showOperationTaskModal("");
+      if (action === "operation-edit-task") return showOperationTaskModal(element.dataset.operationTask || "");
+      if (action === "operation-toggle-task") return toggleOperationTask(element.dataset.operationTask || "");
+      if (action === "operation-remove-task") return confirmRemoveOperationTask(element.dataset.operationTask || "");
+      if (action === "operations-edit-funnel") return showOperationsFunnelModal();
+      if (action === "operations-apply-deadlines") return applyRecommendedOperationDeadlines();
+      if (action === "operation-filter-stage") {
+        STATE.operationStageFilter = element.dataset.operationStage || "all";
+        updateCourseTabContent();
+        return;
+      }
+      if (action === "add-course-contact") return addCourseContact();
+      if (action === "remove-course-contact") return removeCourseContact(element.dataset.contactIndex);
+      if (action === "autofill-course-dates") {
+        autofillCourseDatesFromFirst();
+        updateCreateSummary();
+        showToast("교육 날짜를 연속으로 채웠습니다.", "분할 일정이라면 필요한 날짜만 다시 수정해주세요.");
+        return;
+      }
+      if (action === "copy-create-access-code") {
+        return copyText(valueOf("courseAccessCode"), "교육생 접속 코드를 복사했습니다.");
+      }
+      if (action === "regenerate-create-access-code") return regenerateCreateAccessCode();
+      if (action === "reset-create-periods") {
+        syncCreatePeriodDefaults(true);
+        showToast("추천 공개 시간을 다시 적용했습니다.", "교육 일정에 맞게 시작·종료 시간을 조정할 수 있습니다.");
+        return;
+      }
+      if (action === "toggle-course-delete") {
+        STATE.courseDeleteMode = true;
+        STATE.selectedCourseIds = [];
+        renderCourseList("manage");
+        return;
+      }
+      if (action === "cancel-course-delete") {
+        STATE.courseDeleteMode = false;
+        STATE.selectedCourseIds = [];
+        renderCourseList("manage");
+        return;
+      }
+      if (action === "roster-refresh") return loadCourseRoster(true);
+      if (action === "roster-import") {
+        showLoader("명단 가져오는 중", "연결된 시트에서 교육생을 읽고 있습니다.");
+        return api("portalImportRosterFromSheet", STATE.course.siteId)
+          .then(function (result) {
+            showToast("명단을 가져왔습니다.", result.message);
+            return loadCourseRoster(true);
+          })
+          .catch(showErrorToast)
+          .finally(hideLoader);
+      }
+      if (action === "roster-save-rooms") return saveRoomAssignments(false);
+      if (action === "roster-include-all") return includeAllInSeating();
+      if (action === "room-exclude-nogender") return excludeNoGenderPeople();
+      if (action === "seating-skip-room") {
+        STATE.seatingStep = "meal";
+        updateCourseTabContent();
+        return;
+      }
+      if (action === "apply-document-draft") return applyDocumentDraft();
+      if (action === "settings-autofill") return showScheduleAutofillModal();
+      if (action === "seating-auto") return generateSeatingFromRoster();
+      if (action === "seatmap-auto") return generateSeatMap();
+      if (action === "seatmap-save") return saveSeatMap();
+      if (action === "room-auto") return generateRoomAssignment(false);
+      if (action === "room-save") return saveRoomPlan();
+      if (action === "verify-rooms") return verifyRoomPlan();
+      if (action === "segment-edit") {
+        STATE.segmentEditOpen = true;
+        updateCourseTabContent();
+        return;
+      }
+      if (action === "segment-add") return addSegment();
+      if (action === "segment-save") return saveSegments();
+      if (action === "segment-remove") {
+        const index = Number(element.dataset.segmentIndex);
+        (STATE.segments || []).splice(index, 1);
+        updateCourseTabContent();
+        return;
+      }
+      if (action === "import-prepared") {
+        const picker = document.getElementById("preparedPlanInput");
+        if (picker) picker.click();
+        return;
+      }
+      if (action === "seating-manual-template") return downloadManualSeatingTemplate();
+      if (action === "parse-course-document") {
+        const picker = document.getElementById("courseDocumentInput");
+        if (picker) picker.click();
+        return;
+      }
+      if (action === "roommate-apply" || action === "roommate-reject") {
+        const decision = action === "roommate-apply" ? "apply" : "reject";
+        showLoader("요청 처리 중", "룸메이트 변경 요청 상태를 갱신하고 있습니다.");
+        return api("portalResolveRoommateRequest", STATE.course.siteId,
+            element.dataset.request, decision)
+          .then(function (result) {
+            showToast("처리했습니다.", result.message);
+            return loadCourseRoster(true);
+          })
+          .catch(showErrorToast)
+          .finally(hideLoader);
+      }
+      if (action === "survey-next-step") return moveSurveyWizard(1);
+      if (action === "survey-prev-step") return moveSurveyWizard(-1);
+      if (action === "survey-pick-folder") return openSurveyFolderPicker("");
+      if (action === "survey-add-lecture") return addSatisfactionLecture();
+      if (action === "survey-remove-lecture") {
+        STATE.satisfactionLectures.splice(Number(element.dataset.index), 1);
+        refreshSatisfactionCreateTab();
+        return;
+      }
+      if (action === "survey-refresh") {
+        STATE.satisfactionList = null;
+        return loadSatisfactionList(true);
+      }
+      if (action === "survey-refresh-instructor") {
+        STATE.satisfactionInstructors = null;
+        STATE.satisfactionForceInstructor = true;
+        return renderSatisfactionAnalysisTab();
+      }
+      if (action === "survey-remove-record") {
+        return showModal(
+          "이 설문을 목록에서 제거할까요?",
+          "관리자 페이지의 목록과 집계에서만 빠집니다.",
+          '<div class="info-callout"><strong>구글 폼은 삭제되지 않습니다</strong>' +
+            '<span>드라이브의 설문지 파일과 이미 받은 응답은 그대로 남습니다. ' +
+            '설문지 자체를 지우려면 구글 드라이브에서 직접 삭제해주세요.</span></div>',
+          '<button type="button" class="btn btn-secondary" data-modal-close>취소</button>' +
+            '<button type="button" class="btn btn-danger" data-confirm-survey-remove="' +
+            escapeAttr(element.dataset.surveyId) + '">목록에서 제거</button>'
+        );
+      }
+      if (action === "reset-admin-password") {
+        return confirmAdminAccountAction(
+          "reset",
+          element.dataset.adminId,
+          element.dataset.adminName
+        );
+      }
+      if (action === "unlock-admin") {
+        return confirmAdminAccountAction(
+          "unlock",
+          element.dataset.adminId,
+          element.dataset.adminName
+        );
+      }
+      if (action === "move-selected-courses") return confirmMoveSelectedCourses();
+      if (action === "restore-selected-courses") return confirmRestoreSelectedCourses();
+      if (action === "purge-selected-courses") return confirmPurgeSelectedCourses();
+    }
+
+    function handleContentChange(event) {
+      if (event.target.id === "operationCurrentStage") {
+        ensureOperationsPlan().stage = event.target.value;
+        persistOperationsPlan("현재 운영 단계를 변경했습니다.");
+        return;
+      }
+      if (event.target.closest("#courseCreateForm")) {
+        scheduleCreateDraftSave();
+        const draftStatus = document.getElementById("createDraftStatus");
+        if (draftStatus) draftStatus.innerHTML = "<i></i> 저장 중…";
+        updateCreateSummary();
+      }
+      if (event.target.name === "coursePrimaryContact") {
+        updateCreateSummary();
+        showToast("대표 문의 담당자를 변경했습니다.", "한 명만 선택할 수 있으며 사용자 페이지 최상단에 노출됩니다.");
+        return;
+      }
+      if (event.target.classList.contains("meal-checkbox") && event.target.closest("#courseCreateForm")) {
+        updateMealSelectionSummary();
+        updateCreateSummary();
+      }
+
+      // --- 자리 배치: 포함/제외 토글 ---
+      const seatingToggle = event.target.closest("[data-seating-toggle]");
+      if (seatingToggle) {
+        const excluded = !seatingToggle.checked;
+        const text = seatingToggle.parentElement.querySelector(".switch-text");
+        if (text) text.textContent = excluded ? "제외" : "포함";
+        saveSeatingFlag(seatingToggle.dataset.seatingToggle, { excluded: excluded }, true);
+        return;
+      }
+
+      // --- 교육 구성 편집 ---
+      const segmentField = event.target.closest("[data-segment-field]");
+      if (segmentField) {
+        const index = Number(segmentField.dataset.segmentIndex);
+        const field = segmentField.dataset.segmentField;
+        const segment = (STATE.segments || [])[index];
+        if (segment) {
+          segment[field] = segmentField.value;
+          if (field === "startDate" && (!segment.endDate || segment.endDate < segment.startDate)) {
+            segment.endDate = segment.startDate;
+          }
+          if (field === "type" && segment.type === "online") segment.meals = [];
+          updateCourseTabContent();
+        }
+        return;
+      }
+      const segmentMeal = event.target.closest("[data-segment-meal]");
+      if (segmentMeal) {
+        const parts = String(segmentMeal.dataset.segmentMeal).split(":");
+        const segment = (STATE.segments || [])[Number(parts[0])];
+        if (segment) {
+          const day = Number(parts[1]);
+          const type = parts[2];
+          segment.meals = (segment.meals || []).filter(function (meal) {
+            return !(Number(meal.day) === day && meal.type === type);
+          });
+          if (segmentMeal.checked) segment.meals.push({ day: day, type: type });
+          updateCourseTabContent();
+        }
+        return;
+      }
+
+      // --- 명부: 성별 ---
+      const genderSelect = event.target.closest("[data-roster-gender]");
+      if (genderSelect) {
+        saveSeatingFlag(genderSelect.dataset.rosterGender, { gender: genderSelect.value }, true);
+        return;
+      }
+
+      // --- 명부: 생년 ---
+      const birthInput = event.target.closest("[data-roster-birth]");
+      if (birthInput) {
+        const value = String(birthInput.value || "").replace(/[^\d]/g, "").slice(0, 4);
+        birthInput.value = value;
+        saveSeatingFlag(birthInput.dataset.rosterBirth, { birthYear: value }, true);
+        return;
+      }
+
+      // --- 명부: 객실 유형 ---
+      const roomTypeSelect = event.target.closest("[data-roster-roomtype]");
+      if (roomTypeSelect) {
+        saveSeatingFlag(roomTypeSelect.dataset.rosterRoomtype,
+          { roomType: roomTypeSelect.value || "double" }, true);
+        return;
+      }
+
+      // --- 자리 배치: 고정 테이블 ---
+      const fixedTable = event.target.closest("[data-fixed-table]");
+      if (fixedTable) {
+        const value = String(fixedTable.value || "").replace(/[^\d]/g, "").slice(0, 3);
+        fixedTable.value = value;
+        saveSeatingFlag(fixedTable.dataset.fixedTable, { fixedTable: value }, true);
+        return;
+      }
+
+      // --- 개최 공문 판독 ---
+      if (event.target.id === "courseDocumentInput") {
+        const file = event.target.files && event.target.files[0];
+        const status = document.getElementById("courseDocumentStatus");
+        if (status && file) status.textContent = file.name + " · " + formatBytes(file.size);
+        event.target.value = "";
+        if (file) parseCourseDocument(file);
+        return;
+      }
+
+      // --- 명부 엑셀 업로드 ---
+      if (event.target.id === "rosterFileInput") {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = "";
+        if (file) handleRosterFile(file);
+        return;
+      }
+
+      // --- 이미 만든 배치표(좌석·방·식사 통합) ---
+      if (event.target.id === "preparedPlanInput") {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = "";
+        if (file) handlePreparedPlanFile(file);
+        return;
+      }
+
+      // --- 수동 배치표 업로드 ---
+      if (event.target.id === "manualSeatingInput") {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = "";
+        if (file) handleManualSeatingFile(file);
+        return;
+      }
+      if (event.target.matches("[data-select-all-courses]")) {
+        STATE.selectedCourseIds = event.target.checked
+          ? (STATE.courses || []).map(function (course) { return course.siteId; })
+          : [];
+        renderCourseList("manage");
+        return;
+      }
+      if (event.target.matches("[data-select-all-trash]")) {
+        STATE.selectedTrashIds = event.target.checked
+          ? (STATE.trashCourses || []).map(function (course) { return course.siteId; })
+          : [];
+        renderTrash();
+        return;
+      }
+      if (event.target.name === "satisfactionType") {
+        STATE.satisfactionType = event.target.value;
+        refreshSatisfactionCreateTab();
+        return;
+      }
+      if (event.target.id === "surveyProgramFilter") {
+        STATE.satisfactionFilter.programName = event.target.value;
+        loadSatisfactionList(false);
+        return;
+      }
+      if (event.target.id === "courseMealSkip") {
+        const root = document.getElementById("courseMealSlots");
+        if (root) {
+          root.classList.toggle("meal-slot-disabled", event.target.checked);
+          root.classList.remove("meal-slot-invalid");
+        }
+        updateMealSelectionSummary();
+        updateCreateSummary();
+      }
+      if (event.target.id === "courseDays") {
+        renderCreateDateAndMealFields();
+        updateCreateSummary();
+      }
+      // 달력에서 고른 경우 → 년·월·일 칸에 반영
+      const pickedDate = /^courseDate(\d+)$/.exec(event.target.id);
+      if (pickedDate) {
+        const day = Number(pickedDate[1]);
+        syncHiddenToKoreanDate(day);
+        if (day === 1) autofillCourseDatesFromFirst();
+        else { syncCreatePeriodDefaults(false); refreshMealTileLabels(); }
+        setFieldError("courseDate" + day, "");
+      }
+      // 년·월·일 칸을 직접 고친 경우 → 숨은 date 입력에 반영
+      const typedDate = /^courseDate[YMD](\d+)$/.exec(event.target.id);
+      if (typedDate) {
+        const day = Number(typedDate[1]);
+        syncKoreanDateToHidden(day);
+        if (day === 1) autofillCourseDatesFromFirst();
+        else { syncCreatePeriodDefaults(false); refreshMealTileLabels(); }
+        setFieldError("courseDate" + day, "");
+      }
+      if (event.target.name === "courseType") {
+        toggleCreateCourseType(event.target.value);
+        updateCreateSummary();
+      }
+      if (event.target.dataset.uploadType) handleUploadSelection(event.target.dataset.uploadType, event.target.files);
+      if (event.target.dataset.mealFile) handleMealFile(event.target.dataset.mealFile, event.target.files[0]);
+      const courseSelection = event.target.closest("[data-course-select]");
+      if (courseSelection) {
+        const siteId = courseSelection.dataset.courseSelect;
+        if (courseSelection.checked) {
+          if (STATE.selectedCourseIds.indexOf(siteId) === -1) STATE.selectedCourseIds.push(siteId);
+        } else {
+          STATE.selectedCourseIds = STATE.selectedCourseIds.filter(function (id) { return id !== siteId; });
+        }
+        renderCourseList(STATE.view === "history" ? "history" : "manage");
+        return;
+      }
+      const trashSelection = event.target.closest("[data-trash-select]");
+      if (trashSelection) {
+        const siteId = trashSelection.dataset.trashSelect;
+        if (trashSelection.checked) {
+          if (STATE.selectedTrashIds.indexOf(siteId) === -1) STATE.selectedTrashIds.push(siteId);
+        } else {
+          STATE.selectedTrashIds = STATE.selectedTrashIds.filter(function (id) { return id !== siteId; });
+        }
+        renderTrash();
+      }
+    }
+
+    function handleContentInput(event) {
+      // 전화번호는 다른 파생 상태(요약·자동저장)가 값을 읽기 전에 먼저 정규화합니다.
+      if (event.target && event.target.type === "tel") formatPhoneInput(event.target);
+      // 명부 검색 — 표만 다시 그려 입력 포커스를 유지합니다.
+      if (event.target.id === "rosterSearch") {
+        STATE.rosterSearch = event.target.value;
+        const body = document.querySelector(".roster-table tbody");
+        const roster = ((STATE.roster && STATE.roster.roster) || []);
+        if (body) {
+          const rows = filterRoster(roster);
+          body.innerHTML = rows.length
+            ? rows.map(renderRosterRow).join("")
+            : '<tr class="roster-empty-row"><td colspan="11">조건에 맞는 교육생이 없습니다.</td></tr>';
+        }
+        return;
+      }
+      if (event.target.closest("#courseCreateForm")) {
+        scheduleCreateDraftSave();
+        const draftStatus = document.getElementById("createDraftStatus");
+        if (draftStatus) draftStatus.innerHTML = "<i></i> 저장 중…";
+        updateCreateSummary();
+      }
+      if (event.target.closest("#profileForm")) {
+        validateProfileField(event.target.id, true);
+      }
+      if (event.target.id === "courseGeneration") {
+        validateGenerationInput(true);
+      }
+      if (
+        event.target.id === "courseManagerName" ||
+        event.target.id === "courseManagerPhone"
+      ) {
+        updateManagerProfileMismatchNotice();
+      }
+      const typingDate = /^courseDate[YMD](\d+)$/.exec(event.target.id);
+      if (typingDate) {
+        syncKoreanDateToHidden(Number(typingDate[1]));
+        refreshMealTileLabels();
+      }
+      const rosterField = event.target.closest("[data-roster-field]");
+      if (rosterField) {
+        // 타자를 칠 때마다 저장하면 시트가 과부하되므로 잠깐 모았다가 한 번에 보냅니다.
+        window.clearTimeout(handleContentInput.rosterTimer);
+        handleContentInput.rosterTimer = window.setTimeout(saveRosterEntryEdits, 900);
+        return;
+      }
+      if (event.target.id === "courseSearchInput") {
+        STATE.listSearch = event.target.value;
+        window.clearTimeout(handleContentInput.searchTimer);
+        handleContentInput.searchTimer = window.setTimeout(function () {
+          const navigationVersion = STATE.navigationVersion;
+          loadCourseList(STATE.listFilter, navigationVersion)
+            .then(function () {
+              if (navigationVersion !== STATE.navigationVersion) return;
+              const input = document.getElementById("courseSearchInput");
+              if (input) {
+                input.focus();
+                input.setSelectionRange(input.value.length, input.value.length);
+              }
+            })
+        }, 350);
+      }
+    }
+
+    function handleContentSubmit(event) {
+      event.preventDefault();
+      if (event.target.id === "profileForm") return saveProfile();
+      if (event.target.id === "courseCreateForm") return createCourse(event.target);
+      if (event.target.id === "courseSettingsForm") return saveCourseSettings();
+      if (event.target.id === "satisfactionCreateForm") return submitSatisfactionSurvey();
+      if (event.target.id === "inquiryForm") return submitInquiry();
+      if (event.target.id === "ownerAssignForm") return assignCourseOwner();
+      if (event.target.id === "operationsSummaryForm") return saveOperationsSummary();
+      if (event.target.classList.contains("replyForm")) return replyInquiry(event.target);
+    }
+
+    function formatPhoneInput(input) {
+      const digits = String(input.value || "").replace(/\D/g, "").slice(0, 11);
+      let formatted = digits;
+      if (digits.indexOf("02") === 0) {
+        formatted = digits.length <= 2 ? digits : digits.length <= 5
+          ? digits.slice(0, 2) + "-" + digits.slice(2)
+          : digits.length <= 9
+            ? digits.slice(0, 2) + "-" + digits.slice(2, 5) + "-" + digits.slice(5)
+            : digits.slice(0, 2) + "-" + digits.slice(2, 6) + "-" + digits.slice(6);
+      } else if (digits.length > 3) {
+        formatted = digits.length <= 7
+          ? digits.slice(0, 3) + "-" + digits.slice(3)
+          : digits.slice(0, 3) + "-" + digits.slice(3, digits.length - 4) + "-" + digits.slice(-4);
+      }
+      if (input.value !== formatted) input.value = formatted;
+    }
+
+    function validateProfileField(id, liveMode) {
+      const element = document.getElementById(id);
+      if (!element || !/^profile/.test(id)) return true;
+      const value = String(element.value || "").trim();
+      let message = "";
+      const phonePattern = /^\d{2,4}-\d{3,4}-\d{4}$/;
+
+      if (id === "profileName" && !value) message = "이름을 입력해주세요.";
+      if (id === "profileOrganization" && !value) message = "소속 기관명을 입력해주세요.";
+      if (id === "profilePosition" && !value) message = "직책을 입력해주세요.";
+      if (id === "profileLandline") {
+        if (!value) message = "유선번호를 입력해주세요.";
+        else if (!phonePattern.test(value)) {
+          message = "하이픈(-)을 포함해 입력해주세요. 예: 02-3017-0000";
+        }
+      }
+      if (id === "profileMobile" && value && !phonePattern.test(value)) {
+        message = "하이픈(-)을 포함해 입력해주세요. 예: 010-1234-5678";
+      }
+      if (id === "profileEmail") {
+        if (!value) message = "이메일을 입력해주세요.";
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          message = "@를 포함한 올바른 이메일을 입력해주세요.";
+        }
+      }
+
+      const errorElement = document.getElementById(id + "Error");
+      element.classList.toggle("field-invalid", Boolean(message));
+      element.setAttribute("aria-invalid", message ? "true" : "false");
+      if (errorElement) {
+        errorElement.textContent = message;
+        errorElement.classList.toggle("hidden", !message);
+      }
+      return !message;
+    }
+
+    function validateProfileForm() {
+      const ids = [
+        "profileName",
+        "profileOrganization",
+        "profilePosition",
+        "profileLandline",
+        "profileMobile",
+        "profileEmail"
+      ];
+      let valid = true;
+      ids.forEach(function (id) {
+        if (!validateProfileField(id, false)) valid = false;
+      });
+      if (!valid) {
+        const firstInvalid = document.querySelector("#profileForm .field-invalid");
+        if (firstInvalid) firstInvalid.focus();
+      }
+      return valid;
+    }
+
+    function saveProfile() {
+      if (!validateProfileForm()) {
+        showToast(
+          "기본 정보를 저장할 수 없습니다.",
+          "빨간색으로 표시된 입력란의 형식을 확인해주세요.",
+          "error"
+        );
+        return;
+      }
+      const payload = {
+        name: valueOf("profileName"),
+        organization: valueOf("profileOrganization"),
+        position: valueOf("profilePosition"),
+        landline: valueOf("profileLandline"),
+        mobile: valueOf("profileMobile"),
+        email: valueOf("profileEmail"),
+        publicLandline: checkedOf("profilePublicLandline"),
+        publicMobile: checkedOf("profilePublicMobile"),
+        publicEmail: checkedOf("profilePublicEmail"),
+        // 생일은 별도 화면에서만 바꾸므로 현재 값을 그대로 돌려보냅니다.
+        birthday: valueOf("profileBirthday")
+      };
+      showLoader("기본 정보 저장 중", "다음 강의부터 자동으로 입력되도록 반영하고 있습니다.");
+      api("portalSaveProfile", payload)
+        .then(function (result) {
+          STATE.profile = result.profile;
+          STATE.profileLoaded = true;
+          if (STATE.dashboard) STATE.dashboard.profileComplete = true;
+          STATE.dashboardFetchedAt = 0;
+          updateAccountChrome();
+          showToast("저장했습니다.", result.message);
+        })
+        .catch(showErrorToast)
+        .finally(hideLoader);
+    }
+
+    /** 접속 제한 계정에 대한 총괄 관리자 조치(초기화 / 제한 해제) 확인 창입니다. */
+    function confirmAdminAccountAction(mode, adminId, adminName) {
+      if (!adminId) return;
+      const reset = mode === "reset";
+      const who = escapeHtml((adminName ? adminName + " " : "") + "(" + adminId + ")");
+      showModal(
+        reset ? "비밀번호를 초기화할까요?" : "접속 제한을 풀어줄까요?",
+        reset
+          ? "재사용할 수 없는 임시 비밀번호를 발급하고 접속 제한도 함께 해제합니다."
+          : "비밀번호는 그대로 두고 1일 접속 제한만 해제합니다.",
+        (reset
+          ? '<div class="warning-callout"><strong>대상 계정</strong><span>' + who + '</span></div>' +
+            '<div class="info-callout" style="margin-top:12px"><strong>초기화 후 안내</strong>' +
+              '<span>해당 계정의 기존 로그인 세션은 모두 끊기며, 다음 로그인 시 새 비밀번호 설정이 강제됩니다. ' +
+              '화면에 한 번 표시되는 임시 비밀번호를 본인에게 직접 전달해주세요.</span></div>'
+          : '<div class="info-callout"><strong>대상 계정</strong><span>' + who + '</span></div>' +
+            '<div class="info-callout" style="margin-top:12px"><strong>해제 후 안내</strong>' +
+              '<span>기존 비밀번호로 즉시 다시 로그인할 수 있습니다. 실패 누적 횟수도 0으로 돌아갑니다.</span></div>'),
+        '<button type="button" class="btn btn-secondary" data-modal-close>취소</button>' +
+          '<button type="button" class="btn ' + (reset ? "btn-danger" : "btn-primary") + '"' +
+          ' data-confirm-admin-action="' + escapeAttr(mode) + '"' +
+          ' data-admin-id="' + escapeAttr(adminId) + '">' +
+          (reset ? "임시 비밀번호 발급" : "제한 해제") + '</button>'
+      );
+    }
+
+    function confirmMoveSelectedCourses() {
+      if (!STATE.selectedCourseIds.length) return;
+      showModal(
+        "선택한 강의를 삭제할까요?",
+        "선택한 강의는 휴지통으로 이동하며 사용자 사이트에서도 즉시 접근할 수 없게 됩니다.",
+        '<div class="warning-callout"><strong>' + STATE.selectedCourseIds.length +
+          '개 강의 선택</strong><span>30일 안에는 휴지통에서 복구할 수 있습니다.</span></div>',
+        '<button type="button" class="btn btn-secondary" data-modal-close>취소</button>' +
+          '<button type="button" class="btn btn-danger" data-confirm-course-trash>휴지통으로 이동</button>'
+      );
+    }
+
+    function confirmRestoreSelectedCourses() {
+      if (!STATE.selectedTrashIds.length) return;
+      showModal(
+        "선택한 강의를 복구할까요?",
+        "기존 사용자 사이트 주소와 연결 정보를 그대로 복원합니다.",
+        '<div class="info-callout"><strong>' + STATE.selectedTrashIds.length +
+          '개 강의 선택</strong><span>복구 후 다시 관리할 수 있습니다.</span></div>',
+        '<button type="button" class="btn btn-secondary" data-modal-close>취소</button>' +
+          '<button type="button" class="btn btn-primary" data-confirm-course-restore>복구하기</button>'
+      );
+    }
+
+    function confirmPurgeSelectedCourses() {
+      if (!STATE.selectedTrashIds.length) return;
+      showLoader("삭제 영향 확인 중", "시스템 소유 자료와 보호할 연결 자료를 구분하고 있습니다.");
+      api("portalGetTrashImpact", STATE.selectedTrashIds)
+        .then(function (impact) {
+          const rows = (impact.items || []).map(function (item) {
+            return '<li><strong>' + escapeHtml(item.title) + '</strong><span>Drive 휴지통 이동 ' +
+              Number(item.managedResourceCount || 0) + '개 · 보호할 연결 자료 ' +
+              Number(item.protectedExternalOrLegacyCount || 0) + '개</span></li>';
+          }).join("");
+          showModal(
+            "선택한 강의 기록을 영구 삭제할까요?",
+            "삭제 후 관리자 페이지에서는 복구할 수 없습니다.",
+            '<div class="warning-callout"><strong>영향 확인</strong><span>' + escapeHtml(impact.storageNotice || "") + '</span></div>' +
+              '<ul class="impact-list">' + rows + '</ul>' +
+              '<div class="form-field"><label for="purgeConfirmation">계속하려면 ‘영구 삭제’를 입력하세요.</label>' +
+              '<input id="purgeConfirmation" autocomplete="off"></div>',
+            '<button type="button" class="btn btn-secondary" data-modal-close>취소</button>' +
+              '<button type="button" class="btn btn-danger" data-confirm-course-purge>영구 삭제</button>'
+          );
+        })
+        .catch(showErrorToast)
+        .finally(hideLoader);
+    }
+
+    function submitInquiry() {
+      showLoader("문의 접수 중", "총괄 개발자에게 전달하고 있습니다.");
+      api("portalSubmitInquiry", {
+        subject: valueOf("inquirySubject"),
+        body: valueOf("inquiryBody")
+      })
+        .then(function (result) {
+          showToast("문의를 등록했습니다.", "문의 번호 " + result.inquiryId);
+          return loadInquiries(false);
+        })
+        .catch(showErrorToast)
+        .finally(hideLoader);
+    }
+
+    function replyInquiry(form) {
+      const reply = form.querySelector('[name="reply"]').value.trim();
+      showLoader("답변 저장 중", "관리자 문의 내역에 반영하고 있습니다.");
+      api("portalReplyInquiry", {
+        inquiryId: form.dataset.inquiryId,
+        reply: reply
+      })
+        .then(function (result) {
+          showToast("답변을 저장했습니다.", result.message);
+          return loadInquiries(true);
+        })
+        .catch(showErrorToast)
+        .finally(hideLoader);
+    }
+
+    function assignCourseOwner() {
+      const select = document.getElementById("ownerAdminId");
+      if (!select) return;
+      showLoader("담당 관리자 변경 중", "강의 접근 권한을 안전하게 갱신하고 있습니다.");
+      api("portalAssignCourseOwner", STATE.course.siteId, select.value)
+        .then(function (result) {
+          STATE.course.ownerId = select.value;
+          showToast("담당자를 변경했습니다.", result.message);
+        })
+        .catch(showErrorToast)
+        .finally(hideLoader);
+    }
+
+    function checkPasswordPolicy(value) {
+      const password = String(value || "");
+      if (password.length < PASSWORD_POLICY.minLength) {
+        return "비밀번호는 " + PASSWORD_POLICY.minLength + "자 이상이어야 합니다.";
+      }
+      if (password.length > PASSWORD_POLICY.maxLength) {
+        return "비밀번호는 " + PASSWORD_POLICY.maxLength + "자 이하로 입력해주세요.";
+      }
+      if (/\s/.test(password)) return "비밀번호에는 공백을 사용할 수 없습니다.";
+      if (!/[A-Za-z]/.test(password)) return "비밀번호에 영문을 최소 1자 포함해주세요.";
+      if (!/\d/.test(password)) return "비밀번호에 숫자를 최소 1자 포함해주세요.";
+      return "";
+    }
+
+    /** 새 비밀번호 / 확인란을 함께 검증합니다. 통과하면 빈 문자열을 돌려줍니다. */
+    function validateNewPasswordPair(newId, confirmId, currentId) {
+      const newPassword = valueOf(newId);
+      const confirmPassword = valueOf(confirmId);
+      const policyMessage = checkPasswordPolicy(newPassword);
+      if (policyMessage) return policyMessage;
+      if (newPassword !== confirmPassword) return "새 비밀번호 두 값이 일치하지 않습니다.";
+      if (currentId && newPassword === valueOf(currentId)) {
+        return "현재 비밀번호와 다른 비밀번호를 입력해주세요.";
+      }
+      return "";
+    }
+
+    function openLoginHelp(kind) {
+      if (kind === "find-id") return showFindIdModal();
+      if (kind === "find-password") return showFindPasswordModal();
+      if (kind === "change-password") return showPreLoginPasswordModal();
+    }
+
+    /**
+     * 팝업 안에 결과를 직접 표시합니다.
+     * 오른쪽 아래 토스트는 눈에 잘 띄지 않아, 오류를 못 보고 지나치는 경우가 많았습니다.
+     * tone: "ok"(초록) | "error"(빨강)
+     */
+    function showHelpResult(targetId, tone, message) {
+      const box = document.getElementById(targetId);
+      if (!box) return;
+      box.classList.remove("hidden", "success-callout", "danger-callout");
+      box.classList.add(tone === "error" ? "danger-callout" : "success-callout");
+      box.style.whiteSpace = "pre-line";
+      box.innerHTML = '<strong>' + escapeHtml(message) + '</strong>';
+    }
+
+    function clearHelpResult(targetId) {
+      const box = document.getElementById(targetId);
+      if (!box) return;
+      box.classList.add("hidden");
+      box.innerHTML = "";
+    }
+
+    /** 오른쪽에 '보기' 버튼이 달린 비밀번호 입력칸 */
+    function passwordInput(id, label, placeholder) {
+      return '<div class="form-field password-field">' +
+        '<label for="' + id + '" class="required">' + escapeHtml(label) + '</label>' +
+        '<span class="password-field-control">' +
+          '<input id="' + id + '" type="password" placeholder="' + escapeAttr(placeholder || "") + '" required>' +
+          '<button type="button" class="password-peek" data-password-peek="' + id + '"' +
+            ' aria-label="비밀번호 표시">보기</button>' +
+        '</span>' +
+      '</div>';
+    }
+
+    /** 모달 안 제출 버튼을 '처리 중' 상태로 바꿉니다. 모달이 로더를 가려 멈춘 것처럼 보이는 문제를 막습니다. */
+    function setModalBusy(formId, busy, busyLabel) {
+      const form = document.getElementById(formId);
+      if (!form) return;
+      const button = form.querySelector('button[type="submit"]');
+      if (!button) return;
+      if (busy) {
+        if (!button.dataset.idleLabel) button.dataset.idleLabel = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span>' +
+          '<span>' + escapeHtml(busyLabel || "처리 중입니다...") + '</span>';
+      } else {
+        button.disabled = false;
+        if (button.dataset.idleLabel) button.innerHTML = button.dataset.idleLabel;
+      }
+      form.classList.toggle("modal-form-busy", Boolean(busy));
+    }
+
+    function showFindIdModal() {
+      const body = '<form id="findIdForm">' +
+        '<div class="form-grid">' +
+          formInput("findIdName", "이름", "", "예: 오찬희", true) +
+          formInput("findIdEmail", "포털 이메일 주소", "", "예: manager@kvca.or.kr", true, "email") +
+        '</div>' +
+        '<div class="info-callout login-help-note"><strong>안내</strong>' +
+          '<span>관리자 기본 정보에 등록된 이름과 이메일이 모두 일치해야 조회됩니다.<br>' +
+          '보안을 위해 아이디의 일부만 확인 가능합니다.</span></div>' +
+        '<div id="findIdResult" class="success-callout login-help-result hidden"></div>' +
+        '<div class="modal-actions">' +
+          '<button type="button" class="btn btn-secondary" data-modal-close>닫기</button>' +
+          '<button type="submit" class="btn btn-primary">ID 찾기</button>' +
+        '</div></form>';
+      showModal(
+        "ID 찾기",
+        "등록된 이름과 포털 이메일 주소로 관리자 ID를 확인합니다.",
+        body,
+        "",
+        false,
+        "login-help-modal"
+      );
+    }
+
+    function showFindPasswordModal() {
+      const body = '<form id="findPasswordForm">' +
+        '<div class="form-grid">' +
+          formInput("findPasswordName", "이름", "", "예: 오찬희", true) +
+          formInput("findPasswordEmail", "포털 이메일 주소", "", "예: manager@kvca.or.kr", true, "email") +
+          formInput("findPasswordBirth", "생일 4자리", "", "예: 0310", true, "text", "월·일 4자리(MMDD). 3월 10일이면 0310") +
+        '</div>' +
+        '<div class="warning-callout login-help-note"><span>' +
+          '보안 유지를 위해 셀프 비밀번호 재설정 기능을 지원하고 있지 않습니다.<br>' +
+          '총괄 관리자에게 재설정 요청을 보내주시면, 비밀번호를 1234로 바꿔드리겠습니다' +
+        '</span></div>' +
+        '<div id="findPasswordResult" class="success-callout login-help-result hidden"></div>' +
+        '<div class="modal-actions">' +
+          '<button type="button" class="btn btn-secondary" data-modal-close>닫기</button>' +
+          '<button type="submit" class="btn btn-primary">재설정 요청 보내기</button>' +
+        '</div></form>';
+      showModal(
+        "비밀번호 찾기",
+        "본인 확인 후 총괄 관리자에게 비밀번호 재설정 요청을 전달합니다.",
+        body,
+        "",
+        false,
+        "login-help-modal"
+      );
+    }
+
+    function showPreLoginPasswordModal() {
+      const body = '<form id="preLoginPasswordForm">' +
+        '<div class="form-grid">' +
+          formInput("preLoginId", "ID", "", "로그인에 사용하는 ID", true) +
+          passwordInput("preLoginCurrentPassword", "현재 비밀번호", "") +
+          passwordInput("preLoginNewPassword", "새 비밀번호", PASSWORD_POLICY.minLength + "자 이상 · 영문 + 숫자 포함") +
+          passwordInput("preLoginNewPasswordConfirm", "새 비밀번호 확인", "새 비밀번호를 다시 입력") +
+        '</div>' +
+        '<div id="preLoginPasswordResult" class="login-help-result hidden"></div>' +
+        '<div class="warning-callout login-help-note login-help-note-compact"><span>' +
+          '<strong>주의</strong> ㅣ 비밀번호는 ' + PASSWORD_POLICY.minLength +
+          '자 이상, 영문 + 숫자가 포함된 형태로 만들어주세요</span></div>' +
+        '<div class="modal-actions">' +
+          '<button type="button" class="btn btn-secondary" data-modal-close>취소</button>' +
+          '<button type="submit" class="btn btn-primary">비밀번호 변경</button>' +
+        '</div></form>';
+      showModal(
+        "비밀번호 변경",
+        "현재 비밀번호를 알고 있는 경우 로그인 없이 바로 변경할 수 있습니다.",
+        body,
+        "",
+        false,
+        "login-help-modal password-change-modal"
+      );
+    }
+
+    /* 초기 비밀번호 변경은 권장 사항이며 강제가 아닙니다.
+       required(첫 로그인)일 때는 '다음에 변경하기'로 건너뛸 수 있습니다. */
+    function showChangePasswordModal(required) {
+      const body = '<form id="passwordChangeForm" class="pw-change-form" data-required="' +
+          (required ? "true" : "false") + '">' +
+        (required
+          ? '<p class="pw-change-lead">지금 바꾸지 않아도 계속 이용하실 수 있습니다. ' +
+            '건너뛰면 다음 로그인 때 다시 안내해드릴게요.</p>'
+          : '') +
+        '<div class="pw-change-fields">' +
+          passwordInput("currentPassword", "현재 비밀번호", "현재 사용 중인 비밀번호") +
+          passwordInput("newPassword", "새 비밀번호", "새로 사용할 비밀번호") +
+          passwordInput("newPasswordConfirm", "새 비밀번호 확인", "한 번 더 입력") +
+        '</div>' +
+        '<ul class="pw-change-rules">' +
+          '<li>' + Number(PASSWORD_POLICY.minLength || 7) + '자 이상</li>' +
+          '<li>영문 + 숫자 포함</li>' +
+          '<li>대문자·특수문자는 선택</li>' +
+        '</ul>' +
+        '<div id="passwordChangeResult" class="login-help-result hidden"></div>' +
+        '<div class="modal-actions pw-change-actions">' +
+          (required
+            ? '<button type="button" class="btn btn-secondary" data-action="defer-password-change">다음에 변경하기</button>'
+            : '<button type="button" class="btn btn-secondary" data-modal-close>취소</button>') +
+          '<button type="submit" class="btn btn-primary">비밀번호 변경</button>' +
+        '</div></form>';
+      showModal(
+        required ? "초기 비밀번호를 변경해주세요" : "비밀번호 변경",
+        required
+          ? "보안을 위해 처음 받으신 비밀번호를 바꾸시길 권해드립니다."
+          : "현재 비밀번호를 확인한 뒤 새 비밀번호로 바꿉니다.",
+        body,
+        "",
+        false,
+        "pw-change-modal"
+      );
+      if (required) {
+        ELEMENTS.modalRoot.dataset.required = "true";
+        const closeButton = ELEMENTS.modalRoot.querySelector(".modal-close");
+        if (closeButton) closeButton.remove();
+      }
+    }
+
+    /** '다음에 변경하기' — 이번 접속에서만 건너뜁니다. */
+    function deferPasswordChange() {
+      setModalBusy("passwordChangeForm", true, "잠시만 기다려주세요...");
+      callServer("portalDeferPasswordChange", STATE.token)
+        .then(function (result) {
+          ELEMENTS.modalRoot.dataset.required = "false";
+          closeModal(true);
+          showToast("비밀번호 변경을 미뤘습니다.", result && result.message, "info");
+          return navigate("dashboard");
+        })
+        .catch(function (error) {
+          setModalBusy("passwordChangeForm", false);
+          showHelpResult("passwordChangeResult", "error",
+            String((error && error.message) || "잠시 후 다시 시도해주세요."));
+        });
+    }
+
+    function handleModalClick(event) {
+      const operationRemove = event.target.closest("[data-confirm-operation-remove]");
+      if (operationRemove) {
+        const taskId = operationRemove.dataset.confirmOperationRemove;
+        const plan = ensureOperationsPlan();
+        plan.tasks = (plan.tasks || []).filter(function (task) {
+          return task.id !== taskId || task.system;
+        });
+        closeModal(true);
+        persistOperationsPlan("추가 업무를 삭제했습니다.");
+        return;
+      }
+      const discardPageBuilder = event.target.closest("[data-discard-page-builder]");
+      if (discardPageBuilder) {
+        const target = discardPageBuilder.dataset.discardPageBuilder || "dashboard";
+        STATE.pageBuilderDirty = false;
+        closeModal(true);
+        navigate(target, { skipPageBuilderGuard: true });
+        return;
+      }
+      const pageBlockRemove = event.target.closest("[data-confirm-page-block-remove]");
+      if (pageBlockRemove) {
+        const index = Number(pageBlockRemove.dataset.confirmPageBlockRemove);
+        if (index >= 0 && index < STATE.pageBlocks.length) {
+          STATE.pageBlocks.splice(index, 1);
+          STATE.pageBuilderDirty = true;
+        }
+        closeModal(true);
+        updateCourseTabContent();
+        showToast("카드를 삭제했습니다.", "실제 사용자 사이트에 반영하려면 변경사항을 저장해주세요.");
+        return;
+      }
+      // 공문 판독 결과 적용
+      if (event.target.closest('[data-action="apply-document-draft"]')) {
+        applyDocumentDraft();
+        return;
+      }
+      // 공개 시각 일괄 채우기 적용
+      if (event.target.closest('[data-action="apply-schedule-plan"]')) {
+        applySchedulePlan();
+        return;
+      }
+      // 교육 복제 실행
+      if (event.target.closest('[data-action="run-duplicate-course"]')) {
+        runDuplicateCourse();
+        return;
+      }
+      // 개선 제안
+      if (event.target.closest('[data-action="apply-suggestion"]')) {
+        applySeatingSuggestion();
+        return;
+      }
+      if (event.target.closest('[data-action="ignore-suggestion"]')) {
+        const box = event.target.closest(".suggest-box");
+        if (box) box.innerHTML = '<p class="suggest-kept">알겠습니다. 올려주신 배치 그대로 확정하시면 됩니다.</p>';
+        return;
+      }
+      const tempPasswordCopy = event.target.closest("[data-copy-temp-password]");
+      if (tempPasswordCopy) {
+        copyText(tempPasswordCopy.dataset.copyTempPassword, "임시 비밀번호를 복사했습니다.");
+        return;
+      }
+      // 엑셀 명단 반영
+      if (event.target.closest('[data-action="apply-roster-rows"]')) {
+        applyRosterRows();
+        return;
+      }
+      // 이미 만든 배치표 반영
+      if (event.target.closest('[data-action="apply-prepared-plan"]')) {
+        applyPreparedPlan();
+        return;
+      }
+      // 성별이 다른 룸메이트 요청 처리
+      if (event.target.closest('[data-action="room-force-mixed"]')) {
+        closeModal();
+        generateRoomAssignment(true);
+        return;
+      }
+      if (event.target.closest('[data-action="room-force-separate"]')) {
+        closeModal();
+        STATE.roomIgnoreMixed = true;
+        generateRoomAssignmentIgnoringMixed();
+        return;
+      }
+
+      // 초기 비밀번호 변경 건너뛰기
+      if (event.target.closest('[data-action="defer-password-change"]')) {
+        deferPasswordChange();
+        return;
+      }
+
+      // 비밀번호 마스킹 해제
+      const peek = event.target.closest("[data-password-peek]");
+      if (peek) {
+        const field = document.getElementById(peek.dataset.passwordPeek);
+        if (field) {
+          const shown = field.type === "text";
+          field.type = shown ? "password" : "text";
+          peek.textContent = shown ? "보기" : "숨김";
+          peek.setAttribute("aria-label", shown ? "비밀번호 표시" : "비밀번호 숨기기");
+          peek.classList.toggle("active", !shown);
+        }
+        return;
+      }
+
+      // 팝업은 '닫기' 버튼과 ESC로만 닫습니다.
+      // 예전에는 바깥 여백을 클릭해도 닫혀, 작성 중이던 내용이 사라지곤 했습니다.
+      if (event.target.closest("[data-modal-close]")) {
+        if (ELEMENTS.modalRoot.dataset.required === "true") return;
+        closeModal();
+        return;
+      }
+      if (event.target === ELEMENTS.modalRoot) return;
+      const roomSaveConfirm = event.target.closest("[data-confirm-room-save]");
+      if (roomSaveConfirm) {
+        closeModal();
+        saveRoomAssignments(true);
+        return;
+      }
+
+      const folderStep = event.target.closest("[data-survey-folder]");
+      if (folderStep) {
+        openSurveyFolderPicker(folderStep.dataset.surveyFolder);
+        return;
+      }
+
+      const folderChoose = event.target.closest('[data-action="survey-choose-folder"]');
+      if (folderChoose) {
+        closeModal();
+        showToast("저장 위치를 선택했습니다.",
+          (STATE.satisfactionFolder && STATE.satisfactionFolder.currentPath) || "");
+        refreshSatisfactionCreateTab();
+        return;
+      }
+
+      const surveyRemove = event.target.closest("[data-confirm-survey-remove]");
+      if (surveyRemove) {
+        const surveyId = surveyRemove.dataset.confirmSurveyRemove;
+        closeModal();
+        showLoader("목록에서 제거 중", "설문 기록을 정리하고 있습니다.");
+        api("portalDeleteSatisfactionSurvey", surveyId)
+          .then(function (result) {
+            STATE.satisfactionList = null;
+            STATE.satisfactionInstructors = null;
+            showToast("제거했습니다.", result.message);
+            return loadSatisfactionList(true);
+          })
+          .catch(showErrorToast)
+          .finally(hideLoader);
+        return;
+      }
+
+      const gotoStatus = event.target.closest('[data-action="survey-goto-status"]');
+      if (gotoStatus) {
+        closeModal();
+        STATE.satisfactionTab = "status";
+        STATE.satisfactionList = null;
+        renderSatisfaction();
+        return;
+      }
+
+      const adminActionConfirm = event.target.closest("[data-confirm-admin-action]");
+      if (adminActionConfirm) {
+        const reset = adminActionConfirm.dataset.confirmAdminAction === "reset";
+        const targetId = adminActionConfirm.dataset.adminId;
+        closeModal();
+        showLoader(
+          reset ? "비밀번호 초기화 중" : "접속 제한 해제 중",
+          "관리자 계정 상태를 갱신하고 있습니다."
+        );
+        api(reset ? "portalResetAdminPassword" : "portalUnlockAdminAccount", targetId)
+          .then(function (result) {
+            if (reset) {
+              const temporaryPassword = String(result.temporaryPassword || "");
+              showModal(
+                "임시 비밀번호가 발급되었습니다",
+                "이 창을 닫으면 관리자 화면에서 다시 확인할 수 없습니다.",
+                '<div class="temporary-password-box"><span>대상 계정 ' + escapeHtml(result.adminId || targetId) + '</span>' +
+                  '<code>' + escapeHtml(temporaryPassword) + '</code>' +
+                  '<small>대상자에게 직접 전달하세요. 첫 로그인 뒤 새 비밀번호 설정이 강제됩니다.</small></div>',
+                '<button type="button" class="btn btn-secondary" data-modal-close>확인 후 닫기</button>' +
+                  '<button type="button" class="btn btn-primary" data-copy-temp-password="' +
+                    escapeAttr(temporaryPassword) + '">임시 비밀번호 복사</button>'
+              );
+            } else {
+              showToast("제한을 해제했습니다.", result.message);
+            }
+            return loadInquiries(true);
+          })
+          .catch(showErrorToast)
+          .finally(hideLoader);
+        return;
+      }
+
+      const courseTrashConfirm = event.target.closest("[data-confirm-course-trash]");
+      if (courseTrashConfirm) {
+        const siteIds = STATE.selectedCourseIds.slice();
+        closeModal();
+        showLoader("강의를 휴지통으로 이동 중", "사용자 사이트 접근을 중단하고 기록을 정리하고 있습니다.");
+        api("portalMoveCoursesToTrash", siteIds)
+          .then(function (result) {
+            STATE.lastTrashedIds = siteIds.slice();
+            STATE.selectedCourseIds = [];
+            STATE.courseDeleteMode = false;
+            STATE.courseListCache = {};
+            STATE.dashboardFetchedAt = 0;
+            showToast("휴지통으로 이동했습니다.", result.message);
+            showModal(
+              "휴지통으로 이동했습니다",
+              "실수로 삭제했다면 지금 바로 원래 상태로 되돌릴 수 있습니다.",
+              '<div class="info-callout"><strong>' + siteIds.length + '개 강의</strong><span>기존 공개·차단 상태까지 함께 복원합니다.</span></div>',
+              '<button type="button" class="btn btn-secondary" data-modal-close>닫기</button>' +
+                '<button type="button" class="btn btn-primary" data-undo-course-trash>되돌리기</button>'
+            );
+            return loadCourseList("all");
+          })
+          .catch(showErrorToast)
+          .finally(hideLoader);
+        return;
+      }
+      const courseRestoreConfirm = event.target.closest("[data-confirm-course-restore]");
+      if (courseRestoreConfirm) {
+        const siteIds = STATE.selectedTrashIds.slice();
+        closeModal();
+        showLoader("강의를 복구 중", "기존 주소와 운영 정보를 다시 연결하고 있습니다.");
+        api("portalRestoreCourses", siteIds)
+          .then(function (result) {
+            STATE.selectedTrashIds = [];
+            STATE.courseListCache = {};
+            STATE.dashboardFetchedAt = 0;
+            showToast("강의를 복구했습니다.", result.message);
+            return loadTrash();
+          })
+          .catch(showErrorToast)
+          .finally(hideLoader);
+        return;
+      }
+      const coursePurgeConfirm = event.target.closest("[data-confirm-course-purge]");
+      if (coursePurgeConfirm) {
+        const confirmation = valueOf("purgeConfirmation");
+        if (confirmation !== "영구 삭제") {
+          showToast("확인 문구가 일치하지 않습니다.", "‘영구 삭제’를 정확히 입력해주세요.", "error");
+          return;
+        }
+        const siteIds = STATE.selectedTrashIds.slice();
+        closeModal();
+        showLoader("강의 기록을 영구 삭제 중", "시스템 소유 자료와 연결 자료를 구분해 처리하고 있습니다.");
+        api("portalPermanentlyDeleteCourses", siteIds, { confirmation: confirmation })
+          .then(function (result) {
+            STATE.selectedTrashIds = [];
+            STATE.courseListCache = {};
+            STATE.dashboardFetchedAt = 0;
+            showToast(result.failedCount ? "일부 항목을 처리하지 못했습니다." : "영구 삭제했습니다.", result.message, result.failedCount ? "warning" : "");
+            return loadTrash();
+          })
+          .catch(showErrorToast)
+          .finally(hideLoader);
+        return;
+      }
+      const deleteConfirm = event.target.closest("[data-confirm-delete]");
+      if (deleteConfirm) {
+        const fileId = deleteConfirm.dataset.confirmDelete;
+        const type = deleteConfirm.dataset.fileType;
+        closeModal();
+        showLoader("파일 삭제 중", "사용자 사이트와 Drive에 반영하고 있습니다.");
+        api("portalDeleteCourseFile", { siteId: STATE.course.siteId, fileId: fileId, type: type })
+          .then(function (result) {
+            showToast("파일을 삭제했습니다.", result.message);
+            return openCourse(STATE.course.siteId, type === "photo" ? "photos" : "materials");
+          })
+          .catch(showErrorToast)
+          .finally(hideLoader);
+        return;
+      }
+      const visibilityConfirm = event.target.closest("[data-confirm-visibility]");
+      if (visibilityConfirm) {
+        const visible = visibilityConfirm.dataset.confirmVisibility === "true";
+        closeModal();
+        showLoader(visible ? "접근 허용 중" : "접근 차단 중", "사용자 사이트 상태를 변경하고 있습니다.");
+        api("portalSetCourseVisibility", STATE.course.siteId, visible)
+          .then(function (result) {
+            showToast(visible ? "접근을 허용했습니다." : "접근을 차단했습니다.", result.message);
+            return openCourse(STATE.course.siteId, "overview");
+          })
+          .catch(showErrorToast)
+          .finally(hideLoader);
+      }
+    }
+
+    function handleModalChange(event) {
+      if (event.target.id === "pageBlockType" || event.target.id === "pageBlockScheduled") {
+        updatePageBlockModalFields();
+        return;
+      }
+      if (event.target.id === "pageBlockFile") {
+        const file = event.target.files && event.target.files[0];
+        STATE.pendingPageBlockFile = file || null;
+        const status = document.getElementById("pageBlockFileStatus");
+        if (status) status.textContent = file ? file.name + " · " + formatBytes(file.size) : "PDF·PPT·PPTX · 최대 8MB";
+        return;
+      }
+      if (event.target.id !== "editCourseDays") return;
+      const days = Number(event.target.value || 1);
+      const dateRoot = document.getElementById("editDateFields");
+      const mealRoot = document.getElementById("editMealSlots");
+      const savedDates = {};
+      const savedMeals = {};
+      if (dateRoot) {
+        dateRoot.querySelectorAll("input").forEach(function (input) {
+          savedDates[input.id] = input.value;
+        });
+      }
+      if (mealRoot) {
+        mealRoot.querySelectorAll(".meal-checkbox").forEach(function (input) {
+          savedMeals[input.value] = input.checked;
+        });
+      }
+      if (dateRoot) {
+        dateRoot.innerHTML = Array.from({ length: days }, function (_, index) {
+          const day = index + 1;
+          const existing = savedDates["editDate" + day] || toDateInput(STATE.course["day" + day + "Date"]) || defaultCourseDate(index);
+          return '<div class="form-field"><label for="editDate' + day + '">' + day + '일차</label><input id="editDate' + day + '" type="date" value="' + escapeAttr(existing) + '" required></div>';
+        }).join("");
+      }
+      if (mealRoot) {
+        mealRoot.innerHTML = Array.from({ length: days }, function (_, index) {
+          const day = index + 1;
+          const breakfastKey = day + "|breakfast";
+          const lunchKey = day + "|lunch";
+          const dinnerKey = day + "|dinner";
+          const existingBreakfast = savedMeals[breakfastKey] != null
+            ? savedMeals[breakfastKey]
+            : (STATE.course.mealSlots || []).some(function (slot) { return Number(slot.day) === day && slot.type === "breakfast"; });
+          const existingLunch = savedMeals[lunchKey] != null
+            ? savedMeals[lunchKey]
+            : (STATE.course.mealSlots || []).some(function (slot) { return Number(slot.day) === day && slot.type === "lunch"; });
+          const existingDinner = savedMeals[dinnerKey] != null
+            ? savedMeals[dinnerKey]
+            : (STATE.course.mealSlots || []).some(function (slot) { return Number(slot.day) === day && slot.type === "dinner"; });
+          return '<label class="check-tile"><input class="meal-checkbox" type="checkbox" value="' + breakfastKey + '"' + (existingBreakfast ? " checked" : "") + '><span>' + day + '일차 아침</span></label>' +
+            '<label class="check-tile"><input class="meal-checkbox" type="checkbox" value="' + lunchKey + '"' + (existingLunch ? " checked" : "") + '><span>' + day + '일차 점심</span></label>' +
+            '<label class="check-tile"><input class="meal-checkbox" type="checkbox" value="' + dinnerKey + '"' + (existingDinner ? " checked" : "") + '><span>' + day + '일차 저녁</span></label>';
+        }).join("");
+      }
+    }
+
+    function handleModalSubmit(event) {
+      if (event.target.id === "operationTaskForm") {
+        event.preventDefault();
+        submitOperationTaskForm(event.target);
+        return;
+      }
+      if (event.target.id === "operationsFunnelForm") {
+        event.preventDefault();
+        submitOperationsFunnelForm();
+        return;
+      }
+      if (event.target.id === "userPageBlockForm") {
+        event.preventDefault();
+        submitUserPageBlockForm(event.target);
+        return;
+      }
+      if (event.target.id === "findIdForm") {
+        event.preventDefault();
+        const name = valueOf("findIdName");
+        const email = valueOf("findIdEmail");
+        if (!name || !email) {
+          showHelpResult("findIdResult", "error", "이름과 포털 이메일 주소를 모두 입력해주세요.");
+          return;
+        }
+        clearHelpResult("findIdResult");
+        setModalBusy("findIdForm", true, "ID 확인 중입니다...");
+        callServer("portalFindAdminId", { name: name, email: email })
+          .then(function (result) {
+            showHelpResult("findIdResult", "ok",
+              "회원님의 ID는 " + result.maskedId + " 입니다.");
+          })
+          .catch(function () {
+            // 실패 사유를 자세히 알리면 계정 존재 여부가 드러나므로 문구를 하나로 둡니다.
+            showHelpResult("findIdResult", "error",
+              "입력하신 정보가 조회되지 않습니다.\n입력 정보를 다시 확인해주세요.");
+          })
+          .finally(function () {
+            setModalBusy("findIdForm", false);
+          });
+        return;
+      }
+
+      if (event.target.id === "findPasswordForm") {
+        event.preventDefault();
+        const name = valueOf("findPasswordName");
+        const email = valueOf("findPasswordEmail");
+        const birthday = valueOf("findPasswordBirth").replace(/\D/g, "");
+        if (!name || !email || !birthday) {
+          showHelpResult("findPasswordResult", "error",
+            "이름, 포털 이메일 주소, 생일 4자리를 모두 입력해주세요.");
+          return;
+        }
+        if (!/^(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$/.test(birthday)) {
+          showHelpResult("findPasswordResult", "error",
+            "생일은 월·일 4자리(MMDD)로 입력해주세요.\n예: 3월 10일 → 0310");
+          return;
+        }
+        clearHelpResult("findPasswordResult");
+        setModalBusy("findPasswordForm", true, "총괄 관리자에게 전달 중입니다...");
+        let requestSucceeded = false;
+        callServer("portalRequestPasswordReset", { name: name, email: email, birthday: birthday })
+          .then(function (result) {
+            requestSucceeded = true;
+            showHelpResult("findPasswordResult", "ok", result.message);
+          })
+          .catch(function (error) {
+            // 잠금·형식 오류처럼 안내가 필요한 메시지는 그대로 보여주고,
+            // 조회 실패는 계정 존재 여부가 드러나지 않도록 공통 문구로 바꿉니다.
+            const raw = String((error && error.message) || "");
+            const notFound = raw.indexOf("찾지 못했습니다") !== -1;
+            showHelpResult("findPasswordResult", "error", notFound
+              ? "입력하신 정보가 조회되지 않습니다.\n입력 정보를 다시 확인해주세요."
+              : raw);
+          })
+          .finally(function () {
+            setModalBusy("findPasswordForm", false);
+            if (requestSucceeded) {
+              // 같은 요청이 반복 전송되지 않도록 성공 후에는 버튼을 잠급니다.
+              const form = document.getElementById("findPasswordForm");
+              const submitButton = form && form.querySelector('button[type="submit"]');
+              if (submitButton) submitButton.disabled = true;
+            }
+          });
+        return;
+      }
+
+      if (event.target.id === "preLoginPasswordForm") {
+        event.preventDefault();
+        const adminId = valueOf("preLoginId");
+        if (!adminId) {
+          showHelpResult("preLoginPasswordResult", "error",
+            "ID를 입력해주세요. 어떤 계정의 비밀번호를 바꿀지 알아야 합니다.");
+          return;
+        }
+        const invalidMessage = validateNewPasswordPair(
+          "preLoginNewPassword",
+          "preLoginNewPasswordConfirm",
+          "preLoginCurrentPassword"
+        );
+        if (invalidMessage) {
+          showHelpResult("preLoginPasswordResult", "error", invalidMessage);
+          return;
+        }
+        clearHelpResult("preLoginPasswordResult");
+        setModalBusy("preLoginPasswordForm", true, "비밀번호 변경 중입니다...");
+        callServer("portalChangePasswordDirect", {
+          id: adminId,
+          currentPassword: valueOf("preLoginCurrentPassword"),
+          newPassword: valueOf("preLoginNewPassword")
+        })
+          .then(function (result) {
+            closeModal(true);
+            showToast("비밀번호를 변경했습니다.", result.message);
+            ELEMENTS.loginId.value = adminId;
+            ELEMENTS.loginPassword.value = "";
+            ELEMENTS.loginPassword.focus();
+          })
+          .catch(function (error) {
+            showHelpResult("preLoginPasswordResult", "error",
+              String((error && error.message) || "비밀번호를 변경하지 못했습니다."));
+          })
+          .finally(function () {
+            setModalBusy("preLoginPasswordForm", false);
+          });
+        return;
+      }
+
+      if (event.target.id === "passwordChangeForm") {
+        event.preventDefault();
+        const invalidMessage = validateNewPasswordPair(
+          "newPassword",
+          "newPasswordConfirm",
+          "currentPassword"
+        );
+        if (invalidMessage) {
+          showHelpResult("passwordChangeResult", "error", invalidMessage);
+          return;
+        }
+        clearHelpResult("passwordChangeResult");
+        const currentPassword = valueOf("currentPassword");
+        const newPassword = valueOf("newPassword");
+        setModalBusy("passwordChangeForm", true, "비밀번호 변경 중입니다...");
+        showLoader("비밀번호 변경 중", "새 비밀번호를 안전하게 저장하고 기존 세션을 교체합니다.");
+        api("portalChangePassword", { currentPassword: currentPassword, newPassword: newPassword })
+          .then(function (result) {
+            STATE.token = result.token;
+            persistSession(result.expiresAt);
+            const wasRequired = event.target.dataset.required === "true";
+            ELEMENTS.modalRoot.dataset.required = "false";
+            closeModal(true);
+            showToast("비밀번호를 변경했습니다.", result.message);
+            if (wasRequired) navigate("dashboard");
+          })
+          .catch(function (error) {
+            showHelpResult("passwordChangeResult", "error",
+              String((error && error.message) || "비밀번호를 변경하지 못했습니다."));
+          })
+          .finally(function () {
+            setModalBusy("passwordChangeForm", false);
+            hideLoader();
+          });
+        return;
+      }
+      const seatingConfirm = event.target.closest("[data-confirm-seating]");
+      if (seatingConfirm) {
+        commitSeating(seatingConfirm.dataset.confirmSeating);
+        return;
+      }
+      const mealConfirm = event.target.closest("[data-confirm-meal-assignment]");
+      if (mealConfirm && STATE.pendingMealPayload) {
+        const payload = Object.assign({}, STATE.pendingMealPayload, { commit: true });
+        closeModal();
+        showLoader("식사 자리 확정 중", "운영 시트에 저장하고 사용자 사이트에 반영하고 있습니다.");
+        api("portalGenerateMealAssignment", payload)
+          .then(function (result) {
+            STATE.pendingMealPayload = null;
+            showToast("식사 자리를 확정했습니다.", result.message);
+            if (result.spreadsheetUrl) window.open(result.spreadsheetUrl, "_blank", "noopener");
+          })
+          .catch(showErrorToast)
+          .finally(hideLoader);
+        return;
+      }
+      const undoTrash = event.target.closest("[data-undo-course-trash]");
+      if (undoTrash && STATE.lastTrashedIds.length) {
+        const siteIds = STATE.lastTrashedIds.slice();
+        closeModal();
+        showLoader("삭제 되돌리는 중", "강의의 이전 운영 상태를 복원하고 있습니다.");
+        api("portalRestoreCourses", siteIds)
+          .then(function (result) {
+            STATE.lastTrashedIds = [];
+            STATE.courseListCache = {};
+            showToast("삭제를 되돌렸습니다.", result.message);
+            return loadCourseList("all");
+          })
+          .catch(showErrorToast)
+          .finally(hideLoader);
+        return;
+      }
+      if (event.target.id !== "courseEditForm") return;
+      event.preventDefault();
+      const days = Number(valueOf("editCourseDays"));
+      const payload = {
+        siteId: STATE.course.siteId,
+        revision: STATE.course.revision,
+        isNonVup: STATE.course.isNonVup,
+        generation: valueOf("editEducationValue"),
+        managerName: valueOf("editManagerName"),
+        managerPhone: valueOf("editManagerPhone"),
+        courseDays: days,
+        mealSlots: collectMealSlots(ELEMENTS.modalRoot)
+      };
+      for (let day = 1; day <= days; day++) {
+        const input = document.getElementById("editDate" + day);
+        if (!input || !input.value) {
+          showToast("교육 날짜를 확인해주세요.", day + "일차 날짜가 비어 있습니다.", "error");
+          return;
+        }
+        payload["day" + day + "Date"] = input.value;
+      }
+      closeModal();
+      showLoader("강의 정보 수정 중", "기존 운영 자료를 유지하면서 기본 정보를 갱신합니다.");
+      api("portalUpdateCourse", payload)
+        .then(function (result) {
+          showToast("강의 정보를 수정했습니다.", result.message);
+          return openCourse(STATE.course.siteId, "overview");
+        })
+        .catch(showErrorToast)
+        .finally(hideLoader);
+    }
+
+    function showModal(title, description, body, actions, wide, extraClass) {
+      STATE.modalReturnFocus = document.activeElement;
+      ELEMENTS.modalRoot.dataset.required = "false";
+      ELEMENTS.modalRoot.innerHTML =
+        '<div class="modal-card ' + (wide ? "modal-wide " : "") + (extraClass || "") + '" role="dialog" aria-modal="true" aria-labelledby="modalTitle">' +
+          '<div class="modal-head"><div><h3 id="modalTitle">' + escapeHtml(title) + '</h3><p>' + escapeHtml(description || "") + '</p></div><button type="button" class="modal-close" data-modal-close aria-label="닫기">×</button></div>' +
+          '<div class="modal-body">' + body + '</div>' +
+          (actions ? '<div class="modal-actions">' + actions + '</div>' : "") +
+        '</div>';
+      ELEMENTS.modalRoot.classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+      const first = ELEMENTS.modalRoot.querySelector("input:not([type=hidden]), select, textarea, button, a[href]");
+      if (first) first.focus();
+    }
+
+    function closeModal(force) {
+      if (!ELEMENTS.modalRoot) return;
+      if (!force && ELEMENTS.modalRoot.dataset.required === "true") return;
+      ELEMENTS.modalRoot.classList.add("hidden");
+      ELEMENTS.modalRoot.innerHTML = "";
+      ELEMENTS.modalRoot.dataset.required = "false";
+      document.body.style.overflow = "";
+      if (STATE.modalReturnFocus && document.contains(STATE.modalReturnFocus)) {
+        try { STATE.modalReturnFocus.focus(); } catch (error) {}
+      }
+      STATE.modalReturnFocus = null;
+    }
+
+    function trapModalFocus(event) {
+      const focusable = Array.from(ELEMENTS.modalRoot.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'));
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
+
+    function openSidebar() {
+      ELEMENTS.sidebar.classList.add("open");
+      ELEMENTS.sidebarBackdrop.classList.remove("hidden");
+      ELEMENTS.sidebarOpen.setAttribute("aria-expanded", "true");
+    }
+
+    function closeSidebar() {
+      ELEMENTS.sidebar.classList.remove("open");
+      ELEMENTS.sidebarBackdrop.classList.add("hidden");
+      ELEMENTS.sidebarOpen.setAttribute("aria-expanded", "false");
+    }
+
+    function showLoader(title, message) {
+      STATE.loaderCount = Number(STATE.loaderCount || 0) + 1;
+      ELEMENTS.loaderTitle.textContent = title || "처리하고 있습니다";
+      ELEMENTS.loaderMessage.textContent = message || "잠시만 기다려주세요.";
+      ELEMENTS.portalLoader.classList.remove("hidden");
+    }
+
+    function hideLoader(force) {
+      STATE.loaderCount = force
+        ? 0
+        : Math.max(0, Number(STATE.loaderCount || 0) - 1);
+      if (!STATE.loaderCount) {
+        ELEMENTS.portalLoader.classList.add("hidden");
+      }
+    }
+
+    function showToast(title, message, tone) {
+      const toast = document.createElement("div");
+      toast.className = "toast " +
+        (tone === "error" ? "error" : tone === "warning" ? "warning" : "");
+      toast.innerHTML =
+        '<span class="toast-mark">' + (tone === "error" ? "!" : "✓") + '</span>' +
+        '<span class="toast-copy"><strong>' + escapeHtml(title || "완료") + '</strong><span>' + escapeHtml(message || "") + '</span></span>';
+      ELEMENTS.toastRegion.appendChild(toast);
+      window.setTimeout(function () {
+        toast.style.opacity = "0";
+        toast.style.transform = "translateY(8px)";
+        window.setTimeout(function () { toast.remove(); }, 180);
+      }, 4200);
+    }
+
+    function showErrorToast(error) {
+      const message = error && error.message ? error.message : String(error || "요청을 처리하지 못했습니다.");
+      showToast("처리하지 못했습니다.", message, "error");
+    }
+
+    function renderPageError(title, message) {
+      ELEMENTS.contentRoot.innerHTML =
+        '<div class="panel">' + renderEmpty("!", title, message, "다시 시도", STATE.view) + '</div>';
+    }
+
+    function pageHeading(title, description, actions) {
+      return '<div class="page-heading"><div class="page-heading-copy"><h2>' + escapeHtml(title) + '</h2><p>' + escapeHtml(description) + '</p></div><div class="page-heading-actions">' + (actions || "") + '</div></div>';
+    }
+
+    function panelHeader(title, description, actions) {
+      return '<div class="panel-header"><div><h3 class="panel-title">' + escapeHtml(title) + '</h3><p class="panel-description">' + escapeHtml(description || "") + '</p></div><div>' + (actions || "") + '</div></div>';
+    }
+
+    function sectionHeading(number, title, description) {
+      return '<div class="section-heading"><span class="section-number">' + escapeHtml(number) + '</span><div><h3>' + escapeHtml(title) + '</h3><p>' + escapeHtml(description) + '</p></div></div>';
+    }
+
+    /* 라벨 안에 경고 자리(em)를 함께 넣습니다.
+       .form-field > label 선택자를 그대로 쓸 수 있도록 label의 자식으로 둡니다. */
+    function formInput(id, label, value, placeholder, required, type, help) {
+      return '<div class="form-field" data-field="' + id + '">' +
+        '<label for="' + id + '" class="' + (required ? "required" : "") + '">' +
+          escapeHtml(label) +
+          '<em id="' + id + 'Error" class="field-inline-error hidden"></em>' +
+        '</label>' +
+        '<input id="' + id + '" type="' + (type || "text") + '" value="' + escapeAttr(value || "") +
+          '" placeholder="' + escapeAttr(placeholder || "") + '"' + (required ? " required" : "") + '>' +
+        (help ? '<span class="field-help">' + escapeHtml(help) + '</span>' : "") +
+      '</div>';
+    }
+
+    /** 입력칸을 빨갛게 하고 라벨 옆에 짧은 경고를 답니다. message가 비면 해제합니다. */
+    function setFieldError(id, message) {
+      const input = document.getElementById(id);
+      const label = document.getElementById(id + "Error");
+      if (input) {
+        input.classList.toggle("field-invalid", Boolean(message));
+        input.setAttribute("aria-invalid", message ? "true" : "false");
+      }
+      if (label) {
+        label.textContent = message || "";
+        label.classList.toggle("hidden", !message);
+      } else if (message) {
+        // 숨김 입력처럼 경고를 붙일 자리가 없으면 최소한 토스트로라도 알립니다.
+        showToast("입력값을 확인해주세요.", message, "error");
+      }
+      return !message;
+    }
+
+    /** 여러 칸의 경고를 한 번에 지웁니다. */
+    function clearFieldErrors(ids) {
+      (ids || []).forEach(function (id) { setFieldError(id, ""); });
+    }
+
+    /** 첫 번째로 잘못된 칸으로 초점을 옮깁니다. */
+    function focusFirstInvalid(ids) {
+      for (let i = 0; i < (ids || []).length; i++) {
+        const input = document.getElementById(ids[i]);
+        if (input && input.classList.contains("field-invalid")) {
+          input.focus();
+          return;
+        }
+      }
+    }
+
+    function renderEmpty(icon, title, description, buttonLabel, view) {
+      return '<div class="empty-state"><span class="empty-icon">' + escapeHtml(icon || "·") + '</span><h3>' + escapeHtml(title || "") + '</h3><p>' + escapeHtml(description || "") + '</p>' + (buttonLabel && view ? '<button type="button" class="btn btn-soft btn-small" data-view="' + escapeAttr(view) + '">' + escapeHtml(buttonLabel) + '</button>' : "") + '</div>';
+    }
+
+    function statusChip(phase, label) {
+      const safePhase = ["upcoming", "active", "past", "blocked"].indexOf(phase) !== -1 ? phase : "active";
+      return '<span class="status-chip status-' + safePhase + '">' + escapeHtml(label || safePhase) + '</span>';
+    }
+
+    function setBadge(element, value) {
+      if (!element) return;
+      element.textContent = String(value || 0);
+      element.classList.toggle("hidden", !Number(value || 0));
+    }
+
+    function valueOf(id) {
+      const element = document.getElementById(id);
+      return element ? String(element.value || "").trim() : "";
+    }
+
+    function checkedOf(id) {
+      const element = document.getElementById(id);
+      return Boolean(element && element.checked);
+    }
+
+    function copyText(text, successMessage) {
+      const value = String(text || "");
+      if (!value) {
+        showToast("복사할 주소가 없습니다.", "", "error");
+        return;
+      }
+      const fallback = function () {
+        const textarea = document.createElement("textarea");
+        textarea.value = value;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).catch(fallback);
+      } else {
+        fallback();
+      }
+      showToast("복사했습니다.", successMessage || "");
+    }
+
+    function readKoreanDate(value) {
+      const match = String(value || "").match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+      if (!match) return null;
+      return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    }
+
+    function toDateInput(value) {
+      const date = readKoreanDate(value);
+      if (!date) return "";
+      return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+    }
+
+    function shortCourseDate(course) {
+      const date = readKoreanDate(course.day1Date);
+      return date ? (date.getMonth() + 1) + "월\n" + date.getDate() + "일" : (course.generation || "교육").slice(0, 5);
+    }
+
+    function defaultCourseDate(offset) {
+      const date = new Date();
+      date.setDate(date.getDate() + 7 + Number(offset || 0));
+      return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+    }
+
+    function toDateTimeLocal(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      if (isNaN(date.getTime())) return String(value).slice(0, 16);
+      return toLocalDateTimeString(date);
+    }
+
+    function toLocalDateTimeString(date) {
+      return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) + "T" + pad(date.getHours()) + ":" + pad(date.getMinutes());
+    }
+
+    function localInputToIso(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      return isNaN(date.getTime()) ? "" : date.toISOString();
+    }
+
+    function startServerClock() {
+      if (STATE.serverClockTimer) {
+        window.clearInterval(STATE.serverClockTimer);
+      }
+      if (STATE.serverClockSyncTimer) {
+        window.clearTimeout(STATE.serverClockSyncTimer);
+      }
+
+      function renderClock() {
+        const serverDate = new Date(Date.now() + STATE.serverClockOffset);
+        ELEMENTS.topbarDate.textContent = formatServerClock(serverDate);
+      }
+
+      renderClock();
+
+      STATE.serverClockSyncTimer = window.setTimeout(function () {
+        if (!STATE.token) return;
+        api("portalGetServerTime")
+          .then(function (result) {
+            STATE.serverClockOffset =
+              Number(result.epochMs || Date.now()) - Date.now();
+            renderClock();
+          })
+          .catch(function () {
+            STATE.serverClockOffset = 0;
+          });
+      }, 1400);
+
+      STATE.serverClockTimer = window.setInterval(renderClock, 1000);
+      startNetworkMonitor();
+    }
+
+    /* --- 상단바 네트워크 상태 (시계 아래 한 줄) ---
+       서버 시각 호출이 성공하면 '정상', 실패하거나 브라우저가
+       오프라인이면 '불안정'으로 표시합니다. */
+    function setNetworkStatus(online) {
+      const isOnline = Boolean(online);
+      if (STATE.networkOnline === isOnline) return;
+      STATE.networkOnline = isOnline;
+      if (!ELEMENTS.topbarNetwork) return;
+      ELEMENTS.topbarNetwork.classList.toggle("is-online", isOnline);
+      ELEMENTS.topbarNetwork.classList.toggle("is-offline", !isOnline);
+      if (ELEMENTS.topbarNetworkText) {
+        ELEMENTS.topbarNetworkText.textContent = isOnline
+          ? "네트워크 정상"
+          : "네트워크 불안정";
+      }
+    }
+
+    function probeNetworkStatus() {
+      if (!STATE.token) return;
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        setNetworkStatus(false);
+        return;
+      }
+      callServer("portalGetServerTime", STATE.token)
+        .then(function () {
+          setNetworkStatus(true);
+        })
+        .catch(function () {
+          setNetworkStatus(false);
+        });
+    }
+
+    function startNetworkMonitor() {
+      if (STATE.networkTimer) {
+        window.clearInterval(STATE.networkTimer);
+      }
+      probeNetworkStatus();
+      STATE.networkTimer = window.setInterval(probeNetworkStatus, 20000);
+    }
+
+    function formatServerClock(date) {
+      const formatter = new Intl.DateTimeFormat("ko-KR", {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23"
+      });
+
+      const parts = {};
+      formatter.formatToParts(date).forEach(function (part) {
+        if (part.type !== "literal") parts[part.type] = part.value;
+      });
+
+      return (
+        parts.year + "년 " +
+        parts.month + "월 " +
+        parts.day + "일 " +
+        parts.hour + ":" +
+        parts.minute
+      );
+    }
+
+    function getGreetingLabel() {
+      const hour = new Date().getHours();
+      if (hour < 11) return "GOOD MORNING";
+      if (hour < 18) return "GOOD AFTERNOON";
+      return "GOOD EVENING";
+    }
+
+    function normalizeHeader(value) {
+      return String(value || "").toLowerCase().replace(/[\s_\-()[\]{}]/g, "");
+    }
+
+    function randomFourDigitCode() {
+      return String(Math.floor(1000 + Math.random() * 9000));
+    }
+
+    function createRequestId() {
+      return "portal_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 10);
+    }
+
+    function guessMimeType(fileName) {
+      const extension = String(fileName || "").toLowerCase().split(".").pop();
+      const map = {
+        pdf: "application/pdf",
+        ppt: "application/vnd.ms-powerpoint",
+        pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        png: "image/png",
+        gif: "image/gif",
+        webp: "image/webp",
+        heic: "image/heic",
+        heif: "image/heif"
+      };
+      return map[extension] || "application/octet-stream";
+    }
+
+    function formatBytes(bytes) {
+      const value = Number(bytes || 0);
+      if (value < 1024) return value + " B";
+      if (value < 1024 * 1024) return (value / 1024).toFixed(1) + " KB";
+      return (value / 1024 / 1024).toFixed(1) + " MB";
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, Number(value || 0)));
+    }
+
+    function pad(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value).replace(/`/g, "&#96;");
+    }

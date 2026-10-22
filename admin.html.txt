@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <base target="_top" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#5b35d5" />
+    <meta
+      name="description"
+      content="V-Up 교육의 개설부터 현장 운영, 자료 전달, 설문과 기록 관리까지 한곳에서 처리하는 관리자 콘솔"
+    />
+    <title>V-Up 교육 운영 콘솔</title>
+    <?!= include_('admin-style'); ?>
+  </head>
+  <body>
+    <script>
+      const ADMIN_BASE_URL = "<?= adminBaseUrl ?>";
+      const REQUESTED_COURSE_ID = "<?= requestedCourseId ?>";
+    </script>
+    <?!= include_('admin-main'); ?>
+    <?!= include_('admin-script'); ?>
+  </body>
+</html>

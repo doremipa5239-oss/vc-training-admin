@@ -1,0 +1,300 @@
+/****************************************************
+ * V-Up 교육 운영을 위한 관리자 전용 프로젝트 Code.gs
+ * - Step 1. 식사 자리 배치도
+ * - Step 2. 교재 파일 첨부
+ * - Step 3. 현장 사진 첨부
+ *
+ * 중요 배포 조건
+ * - 이 Code.gs는 관리자 전용 Apps Script 프로젝트에만 넣습니다.
+ * - 웹 앱 액세스 권한은 반드시 "나만"으로 배포합니다.
+ * - 교육생 공개 프로젝트에는 이 파일을 넣지 않습니다.
+ *
+ * [1_Config.gs] 전역 상수 · 관리자 계정 · 시트 스키마
+ * 이 파일은 Apps Script 편집기 파일 목록의 맨 위에 두세요.
+ ****************************************************/
+
+const SPREADSHEET_ID = '1br8XkRFTMnIPSDlPSbhC-ONHdrR_GzaIKQdfnw9g8Xs';
+const SHEET_SITES = '교육사이트목록';
+const TIMEZONE = 'Asia/Seoul';
+const SITE_EDIT_SESSION_MINUTES = 10;
+const SITE_TRASH_DAYS = 30;
+const SHEET_AUDIT = '관리자감사기록';
+const USER_DATA_CACHE_SECONDS = 30;
+const SITE_LIST_CACHE_SECONDS = 60;
+const DRIVE_BROWSER_CACHE_SECONDS = 20;
+const PARTICIPANT_LOOKUP_CACHE_SECONDS = 30;
+const MAX_BASE64_UPLOAD_FILE_BYTES = 8 * 1024 * 1024;
+const MAX_BASE64_UPLOAD_FILES = 10;
+const MAX_BASE64_UPLOAD_TOTAL_BYTES = 25 * 1024 * 1024;
+const ADMIN_SESSION_IDLE_MINUTES = 60;
+const ADMIN_SESSION_ABSOLUTE_HOURS = 8;
+const ADMIN_PASSWORD_HASH_ITERATIONS = 12000;
+const PUBLIC_CURSOR_MAX_AGE_SECONDS = 15 * 60;
+const MAX_IMPORT_SHEETS = 20;
+const MAX_IMPORT_ROWS = 2000;
+const MAX_IMPORT_COLUMNS = 100;
+const MAX_IMPORT_CELLS = 100000;
+const SHEET_ADMIN_RESOURCES = '관리자리소스';
+const RESOURCE_OWNERSHIP_MANAGED = 'managed';
+const RESOURCE_OWNERSHIP_EXTERNAL = 'external';
+const RESOURCE_OWNERSHIP_LEGACY = 'legacy-unknown';
+const SITE_INFO_RUNTIME_CACHE = {};
+let DRIVE_ROOT_ID_RUNTIME_CACHE = '';
+
+/****************************************************
+ * V-Up 관리자 포털 계정 설정
+ * --------------------------------------------------
+ * 1) 아래 목록에서는 관리자 ID·역할·활성 여부만 관리합니다.
+ * 2) 최초 임시 비밀번호는 코드에 저장하지 않고 실행 로그에 한 번만 표시됩니다.
+ * 3) 계정 암호를 강제로 초기화할 때만 passwordVersion을 1 올립니다.
+ * 4) 로그인 후 각 관리자는 포털에서 개인 비밀번호로 즉시 변경합니다.
+ *
+ * 중요: Apps Script 프로젝트 편집 권한은 총괄 개발자에게만 부여하세요.
+ ****************************************************/
+const ADMIN_ACCOUNT_SEEDS = [
+  {
+    id: 'sjkim',
+    initialPassword: '',
+    forcePasswordChange: true,
+    passwordVersion: 1,
+    role: 'manager',
+    displayName: '김수정',
+    active: true
+  },
+  {
+    id: 'yoobin',
+    initialPassword: '',
+    forcePasswordChange: true,
+    passwordVersion: 1,
+    role: 'manager',
+    displayName: '이유빈',
+    active: true
+  },
+  {
+    id: 'dhkim',
+    initialPassword: '',
+    forcePasswordChange: true,
+    passwordVersion: 1,
+    role: 'manager',
+    displayName: '김도협',
+    active: true
+  },
+  {
+    id: 'sionyoo',
+    initialPassword: '',
+    forcePasswordChange: true,
+    passwordVersion: 1,
+    role: 'manager',
+    displayName: '유시온',
+    active: true
+  },
+  {
+    id: 'ysg',
+    initialPassword: '',
+    forcePasswordChange: true,
+    passwordVersion: 1,
+    role: 'manager',
+    displayName: '윤석규',
+    active: true
+  },
+    {
+    id: 'ahyun4348',
+    initialPassword: '',
+    forcePasswordChange: true,
+    passwordVersion: 1,
+    role: 'manager',
+    displayName: '김아현',
+    active: true
+  },
+  {
+    id: 'hy303',
+    initialPassword: '',
+    forcePasswordChange: true,
+    passwordVersion: 1,
+    role: 'manager',
+    displayName: '황현정',
+    active: true
+  },
+  {
+    id: 'sjchoi',
+    initialPassword: '',
+    forcePasswordChange: true,
+    passwordVersion: 1,
+    role: 'manager',
+    displayName: '조성준',
+    active: true
+  },
+  {
+    id: 'ch5239',
+    initialPassword: '',
+    forcePasswordChange: true,
+    passwordVersion: 1,
+    role: 'developer',
+    displayName: '오찬희',
+    active: true
+  }
+];
+
+const ADMIN_SESSION_HOURS = ADMIN_SESSION_ABSOLUTE_HOURS;
+const ADMIN_MAX_LOGIN_FAILURES = 8;
+const ADMIN_LOGIN_LOCK_SECONDS = 600;
+const ADMIN_ACCOUNT_REGISTRY_KEY = 'VUP_ADMIN_ACCOUNT_REGISTRY_V1';
+const ADMIN_ACCOUNT_REGISTRY_CACHE_KEY = 'VUP_ADMIN_ACCOUNT_REGISTRY_CACHE_V1';
+const ADMIN_SESSION_PREFIX = 'VUP_ADMIN_SESSION_V1_';
+const ADMIN_PROFILE_CACHE_SECONDS = 120;
+const SHEET_ADMIN_PROFILES = '관리자프로필';
+const SHEET_ADMIN_COURSE_OWNERS = '관리자강의권한';
+const SHEET_ADMIN_COURSE_SETTINGS = '강의운영설정';
+const SHEET_ADMIN_INQUIRIES = '관리자문의';
+const SHEET_ADMIN_SURVEYS = '강의설문';
+let ADMIN_RUNTIME_CONTEXT = null;
+let ADMIN_REQUEST_CACHE = null;
+const PUBLIC_MANAGER_CONTACT_RUNTIME_CACHE = {};
+
+const PARTICIPANT_BASE_HEADERS = [
+  '이름',
+  '회사명',
+  '직급',
+  '휴대폰 번호'
+];
+
+const DEFAULT_MEAL_HEADERS = [
+  '1일차 점심 자리번호',
+  '1일차 저녁 자리번호',
+  '2일차 점심 자리번호',
+  '2일차 저녁 자리번호'
+];
+
+const PARTICIPANT_HEADERS = PARTICIPANT_BASE_HEADERS.concat(DEFAULT_MEAL_HEADERS);
+
+const SAMPLE_EXCEL_STYLE = {
+  headerBg: '#C6EFCE',
+  headerFont: '#000000',
+  bodyBg: '#FFFFFF',
+  border: '#000000'
+};
+
+const FREQUENT_OVERLAP_HIGHLIGHT = {
+  bg: '#FCE4D6',
+  font: '#9C0006'
+};
+
+/****************************************************
+ * [신규] 관리자 통합 엑셀(구글 시트) 연동 설정
+ * ------------------------------------------------------
+ * 관리자가 매 기수마다 직접 관리하는 통합 시트(예: "제63기_브이업")를
+ * openById로 직접 읽어, 교육생 명단 / 강의장 좌석 / 룸메이트 명단 3종을
+ * "고정 셀 주소"가 아니라 "헤더 이름·패턴"으로 동적 탐지합니다.
+ *
+ * 설계 원칙:
+ *  - 시트 이름, 컬럼 순서, 사용 범위가 기수마다 조금씩 달라져도 최대한 견디도록
+ *    후보(candidate) 목록으로 유연하게 매칭합니다.
+ *  - 탐지에 실패하면 "조용히 빈 데이터"를 주는 대신, 어떤 시트에서 무엇을
+ *    못 찾았는지 명확한 warning 배열로 돌려줘 관리자가 바로 알 수 있게 합니다.
+ ****************************************************/
+const LINKED_SHEET_CONFIG = {
+  // 교육생 명단이 들어있는 시트 이름 후보 (앞에서부터 우선 탐색)
+  participantSheetNames: ['교육생_raw data', '교육생 raw data', '교육생명단', '교육생 명단', '참가자명단', '참가자 명단', '교육생', 'AI 생성_교육생 명단'],
+  // 강의장 좌석 배치도 시트 이름 후보
+  lectureSeatSheetNames: ['자리 배치도', '자리배치도', '강의장 좌석 배치도', '강의장좌석배치도', '강의장 자리배치', '좌석배치도', '좌석 배치도', 'AI 생성_자리배치도'],
+  // 객실(룸메이트) 시트 이름 후보
+  roommateSheetNames: ['객실배치', '객실 배치', '객실배치도', '룸메이트명단', '룸메이트 명단', '숙소배치', '숙소 배치', 'AI 생성_룸메이트 명단'],
+
+  // 교육생 시트 헤더 매칭 후보 (공백 제거 후 정확히 일치하는 첫 컬럼을 사용)
+  participantHeaderCandidates: {
+    name: ['이름', '성명', '성 명', '참가자', '참가자명', '교육생명', '교육생', '교육생 이름', '교육생 성명', '한글명', '영문명', 'name', 'full name'],
+    company: ['회사명', '소속', '기관명', '소속기관', '소속사', '회사', '기관', '업체명', '학교', '부서', 'department', 'company', 'organization'],
+    position: ['직급', '직위', '직책', '직함', '담당업무', 'position', 'title', 'role'],
+    phone: ['휴대폰번호', '휴대폰 번호', '핸드폰번호', '핸드폰 번호', '전화번호', '연락처', '휴대전화', '휴대폰', '핸드폰', 'mobile', 'phone', 'tel'],
+    gender: ['성별', '성 별', '남녀', 'gender', 'sex']
+  },
+
+  // 강의장 좌석 배치도: 이름이 처음 시작되는 기준 셀(anchor). C10 = row10, col3.
+  // 이 값보다 실제 데이터가 위/왼쪽에서 시작하면 자동 보정 스캔도 함께 시도합니다.
+  lectureSeatAnchorRow: 10,
+  lectureSeatAnchorCol: 3,
+  // 좌석 그리드에서 "이름이 아님"으로 걸러낼 키워드(라벨 등)
+  lectureSeatSkipKeywords: ['무대', 'STAGE', 'stage', '교탁', '통로', '구분', '좌석', '배치도', '창가', '열', '줄', '성명은'],
+
+  // 룸메이트 시트: 우선적으로 살펴볼 열(K열=11). 못 찾으면 전체 열을 스캔합니다.
+  roommatePreferredCol: 11
+};
+
+const SITE_HEADERS = [
+  'siteId',
+  '기수',
+  '사용자홈페이지제목',
+  '담당자명',
+  '담당자전화번호',
+  '1일차날짜',
+  '2일차날짜',
+  '연동시트ID',
+  '연동시트URL',
+  '사용자URL',
+  '생성일시',
+  '수정일시',
+  '상태',
+  '비고',
+  '교재PDF폴더ID',
+  '교재PDF폴더URL',
+  '현장사진폴더ID',
+  '현장사진폴더URL',
+  '강의장PDF파일ID_구버전',
+  '강의장PDF파일URL_구버전',
+  '최종완료여부',
+  '최종완료일시',
+  '오프라인일정JSON',
+  '식사슬롯JSON',
+  '교육생정보확인일시',
+  '삭제일시',
+  '삭제예정일시',
+  '관리자링크문서ID',
+  '자료폴더번호',
+  '업무체크포인트JSON',
+  '삭제전상태',
+  '수정버전',
+  '최종승인버전'
+];
+
+// NOTE(스키마 확장, 하위호환):
+// - '1일차날짜'/'2일차날짜' 컬럼은 과거 데이터 및 스프레드시트에서 한눈에 보기 위한 용도로 계속 유지합니다.
+// - 3~5일차 날짜, 실제 오프라인 일수(courseDays), 식사 슬롯(mealSlots) 등 유연한 정보는
+//   기존에 '예비1'/'예비2'로 비워두었던 컬럼을 JSON 문자열 저장용으로 재사용합니다(컬럼 삽입/이동 없음).
+//   => 기존 62기까지의 행(row)은 인덱스가 전혀 바뀌지 않으므로 안전합니다.
+// - rowToSiteInfo_() 에서 '오프라인일정JSON'이 비어있는 과거 행은 1~2일차 날짜만 있는 2일 과정으로 간주해
+//   자동으로 courseDays=2 로 폴백 처리합니다.
+const COL = {
+  siteId: 1,
+  generation: 2,
+  title: 3,
+  managerName: 4,
+  managerPhone: 5,
+  day1Date: 6,
+  day2Date: 7,
+  linkedSheetId: 8,
+  linkedSheetUrl: 9,
+  userUrl: 10,
+  createdAt: 11,
+  updatedAt: 12,
+  status: 13,
+  memo: 14,
+  materialFolderId: 15,
+  materialFolderUrl: 16,
+  photoFolderId: 17,
+  photoFolderUrl: 18,
+  legacyLecturePdfId: 19,
+  legacyLecturePdfUrl: 20,
+  finalCompleted: 21,
+  finalCompletedAt: 22,
+  scheduleJson: 23,
+  mealSlotsJson: 24,
+  dataReviewConfirmedAt: 25,
+  deletedAt: 26,
+  purgeAt: 27,
+  adminLinkDocumentId: 28,
+  folderNumber: 29,
+  workflowCheckpointJson: 30,
+  preTrashStatus: 31,
+  revision: 32,
+  lastApprovedRevision: 33
+};

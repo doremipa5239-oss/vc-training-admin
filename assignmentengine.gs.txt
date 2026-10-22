@@ -1,0 +1,481 @@
+/****************************************************
+ * [6_AssignmentEngine.gs] 식사·객실·강의장 좌석 배정 엔진 (VupAssignment)
+ ****************************************************/
+
+/* V-Up assignment engine. No I/O, external dependencies, or personal-data logging. */
+(function (root, factory) {
+  var api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.VupAssignment = api;
+}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+  var MAX_PEOPLE = 500;
+
+  function fail(code, message, details) {
+    var error = new Error(message);
+    error.name = 'AssignmentError';
+    error.code = code;
+    error.details = details || {};
+    throw error;
+  }
+  function clean(value) { return value == null ? '' : String(value).trim().normalize('NFC'); }
+  function integer(value, label, min, max, fallback) {
+    if (value == null && fallback != null) return fallback;
+    var number = Number(value);
+    if (!Number.isInteger(number) || number < min || number > max || value === '') {
+      fail('INVALID_NUMBER', label + ' 값은 ' + min + '~' + max + ' 사이 정수여야 합니다.');
+    }
+    return number;
+  }
+  function list(value, label) {
+    if (value == null) return [];
+    if (!Array.isArray(value)) fail('INVALID_ARRAY', label + ' 값은 배열이어야 합니다.');
+    return value;
+  }
+  function gender(value) {
+    var text = clean(value).toLowerCase();
+    if (['m', 'male', '남', '남성', '남자'].indexOf(text) >= 0) return 'male';
+    if (['f', 'female', '여', '여성', '여자'].indexOf(text) >= 0) return 'female';
+    return 'unknown';
+  }
+  function snoring(value) {
+    if (value === true || value === 1) return 'yes';
+    if (value === false || value === 0) return 'no';
+    var text = clean(value).toLowerCase();
+    if (['yes', 'y', 'true', '1', '예', '있음', '유', '코골이'].indexOf(text) >= 0) return 'yes';
+    if (['no', 'n', 'false', '0', '아니오', '아니요', '없음', '무'].indexOf(text) >= 0) return 'no';
+    return 'unknown';
+  }
+  function roomType(value) {
+    var text = clean(value).toLowerCase();
+    if (['single', '1', '1인실', '독실'].indexOf(text) >= 0) return 'single';
+    if (['none', '불참', '미숙박', '숙박안함', '숙박 안함'].indexOf(text) >= 0) return 'none';
+    if (['', 'double', 'twin', '2', '2인실'].indexOf(text) >= 0) return 'double';
+    fail('INVALID_ROOM_TYPE', '알 수 없는 객실 유형입니다.', { value: value });
+  }
+  function roster(input) {
+    var rows = list(input, 'participants');
+    if (rows.length > MAX_PEOPLE) fail('TOO_MANY_PARTICIPANTS', '최대 500명까지 배정할 수 있습니다.');
+    var byId = new Map(), byName = new Map();
+    var people = rows.map(function (row, index) {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) fail('INVALID_PARTICIPANT', '참가자 정보가 올바르지 않습니다.', { index: index });
+      var name = clean(row.name);
+      if (!name) fail('MISSING_NAME', '참가자 이름이 비어 있습니다.', { index: index });
+      var explicitId = clean(row.id), id = explicitId || 'name:' + name;
+      if (byId.has(id)) fail('DUPLICATE_ID', '참가자 ID가 중복됩니다. 동명이인은 별도 ID가 필요합니다.', { id: id });
+      var person = { id: id, name: name, company: clean(row.company), gender: gender(row.gender),
+        snoring: snoring(row.snoring), age: null, roomType: row.roomType,
+        excludedMeals: list(row.excludedMeals, 'excludedMeals').map(clean), index: index };
+      if (row.age != null && clean(row.age) !== '') person.age = integer(row.age, '나이', 0, 120);
+      byId.set(id, index);
+      if (!byName.has(name)) byName.set(name, []);
+      byName.get(name).push(index);
+      return person;
+    });
+    function resolve(reference) {
+      var explicit = reference && typeof reference === 'object';
+      var text = clean(explicit ? (reference.id != null ? reference.id : reference.participantId != null ? reference.participantId : reference.name) : reference);
+      if (byId.has(text)) return byId.get(text);
+      if (explicit && (reference.id != null || reference.participantId != null)) fail('UNKNOWN_PARTICIPANT', '참가자 ID를 찾을 수 없습니다.', { reference: text });
+      var matches = byName.get(text) || [];
+      if (matches.length > 1) fail('AMBIGUOUS_NAME', '동명이인은 이름 대신 참가자 ID로 지정해주세요.', { name: text });
+      if (matches.length === 1) return matches[0];
+      fail('UNKNOWN_PARTICIPANT', '명단에 없는 참가자 참조입니다.', { reference: text });
+    }
+    return { people: people, resolve: resolve };
+  }
+  function randomFor(seed) {
+    var text = String(seed == null ? 'vup-1' : seed), state = 2166136261;
+    for (var i = 0; i < text.length; i++) state = Math.imul(state ^ text.charCodeAt(i), 16777619);
+    return function () {
+      state = (state + 0x6D2B79F5) | 0;
+      var value = Math.imul(state ^ state >>> 15, state | 1);
+      value ^= value + Math.imul(value ^ value >>> 7, value | 61);
+      return ((value ^ value >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function warning(code, message, participantIds, extra) {
+    return Object.assign({ code: code, severity: 'warning', category: 'constraint', message: message, participantIds: participantIds || [] }, extra || {});
+  }
+  function result(assignments, violations, stats, extra) {
+    return Object.assign({ assignments: assignments, violations: violations,
+      status: violations.length ? 'review_required' : 'ready',
+      stats: Object.assign({ hardViolations: 0, warningCount: violations.length,
+        softViolationCount: violations.filter(function (v) { return v.category === 'constraint'; }).length }, stats) }, extra || {});
+  }
+  function validateCoverage(groups, expected) {
+    var found = new Set();
+    groups.forEach(function (group) { group.forEach(function (id) {
+      if (found.has(id)) fail('INTERNAL_DUPLICATE', '배정 결과에 중복이 발생했습니다.');
+      found.add(id);
+    }); });
+    if (found.size !== expected.length || expected.some(function (id) { return !found.has(id); })) fail('INTERNAL_COVERAGE', '배정 결과에 누락이 발생했습니다.');
+  }
+  function markPairs(ids, size, matrix, flag) {
+    for (var i = 0; i < ids.length; i++) for (var j = i + 1; j < ids.length; j++) {
+      matrix[ids[i] * size + ids[j]] |= flag;
+      matrix[ids[j] * size + ids[i]] |= flag;
+    }
+  }
+  function resolveUniqueRows(rows, context, label) {
+    var seen = new Set();
+    return list(rows, label).map(function (row) {
+      var cells = Array.isArray(row) ? row : list(row && row.participantIds, label + '.participantIds');
+      return cells.filter(function (cell) { return cell != null && clean(cell) !== ''; }).map(function (cell) {
+        var id = context.resolve(cell);
+        if (seen.has(id)) fail('DUPLICATE_REFERENCE', label + '에 같은 참가자가 두 번 등장합니다.', { id: context.people[id].id });
+        seen.add(id); return id;
+      });
+    });
+  }
+  function mealConstraints(options, context) {
+    var people = context.people, n = people.length, flags = new Uint8Array(n * n);
+    for (var i = 0; i < n; i++) for (var j = i + 1; j < n; j++) {
+      if (people[i].company && people[i].company === people[j].company) markPairs([i, j], n, flags, 1);
+    }
+    resolveUniqueRows(options.roommateRows, context, 'roommateRows').forEach(function (row) { markPairs(row, n, flags, 2); });
+    var seen = new Set();
+    var grid = list(options.seatGrid, 'seatGrid').map(function (row) {
+      return list(row, 'seatGrid 행').map(function (cell) {
+        if (cell == null || cell === '') return null;
+        var id = context.resolve(cell);
+        if (seen.has(id)) fail('DUPLICATE_SEAT', '강의장 좌석에 참가자가 중복됩니다.', { id: people[id].id });
+        seen.add(id); return id;
+      });
+    });
+    if (options.adjacencyMode != null && ['all', 'front-back'].indexOf(options.adjacencyMode) < 0) fail('INVALID_ADJACENCY_MODE', 'adjacencyMode는 all 또는 front-back이어야 합니다.');
+    grid.forEach(function (row, r) { row.forEach(function (id, c) {
+      if (id == null) return;
+      if (grid[r + 1] && grid[r + 1][c] != null) markPairs([id, grid[r + 1][c]], n, flags, 4);
+      if (options.adjacencyMode !== 'front-back' && row[c + 1] != null) markPairs([id, row[c + 1]], n, flags, 4);
+    }); });
+    return flags;
+  }
+  function targetSizes(count, capacity, fixed) {
+    var sizes = fixed.map(function (row) { return row.length; });
+    if (capacity.reduce(function (a, b) { return a + b; }, 0) < count) fail('INSUFFICIENT_CAPACITY', '식사 테이블의 총 좌석 수가 부족합니다.');
+    sizes.forEach(function (size, index) { if (size > capacity[index]) fail('FIXED_CAPACITY_CONFLICT', '고정 인원이 해당 테이블 정원을 초과합니다.', { table: index + 1 }); });
+    var assigned = sizes.reduce(function (a, b) { return a + b; }, 0);
+    while (assigned < count) {
+      var best = -1;
+      for (var t = 0; t < sizes.length; t++) if (sizes[t] < capacity[t] && (best < 0 || sizes[t] < sizes[best])) best = t;
+      sizes[best]++; assigned++;
+    }
+    return sizes;
+  }
+  function tableScore(tables, matrix, n) {
+    var score = 0;
+    tables.forEach(function (table) { for (var i = 0; i < table.length; i++) for (var j = i + 1; j < table.length; j++) score += matrix[table[i] * n + table[j]]; });
+    return score;
+  }
+  function optimizeTables(active, fixed, targets, matrix, n, random, attempts, iterations) {
+    var locked = new Set();
+    fixed.forEach(function (row) { row.forEach(function (id) { locked.add(id); }); });
+    var free = active.filter(function (id) { return !locked.has(id); });
+    var degrees = new Float64Array(n);
+    active.forEach(function (id) { active.forEach(function (other) { degrees[id] += matrix[id * n + other]; }); });
+    var best = null;
+    for (var attempt = 0; attempt < attempts; attempt++) {
+      var tables = fixed.map(function (row) { return row.slice(); });
+      var order = free.map(function (id) { return { id: id, priority: degrees[id] * (0.85 + random() * 0.3), tie: random() }; });
+      order.sort(function (a, b) { return b.priority - a.priority || a.tie - b.tie; });
+      order.forEach(function (entry) {
+        var chosen = -1, bestCost = Infinity;
+        tables.forEach(function (table, t) {
+          if (table.length >= targets[t]) return;
+          var cost = random() * 0.001;
+          table.forEach(function (id) { cost += matrix[entry.id * n + id]; });
+          if (cost < bestCost) { bestCost = cost; chosen = t; }
+        });
+        tables[chosen].push(entry.id);
+      });
+      var score = tableScore(tables, matrix, n), locations = new Array(n);
+      tables.forEach(function (row, t) { row.forEach(function (id, p) { locations[id] = [t, p]; }); });
+      for (var step = 0; step < iterations && score > 0 && free.length > 1; step++) {
+        var a = free[Math.floor(random() * free.length)], b = free[Math.floor(random() * free.length)];
+        var la = locations[a], lb = locations[b];
+        if (la[0] === lb[0]) continue;
+        var left = tables[la[0]], right = tables[lb[0]], delta = 0;
+        left.forEach(function (id) { if (id !== a) delta += matrix[b * n + id] - matrix[a * n + id]; });
+        right.forEach(function (id) { if (id !== b) delta += matrix[a * n + id] - matrix[b * n + id]; });
+        if (delta < 0 || (delta === 0 && random() < 0.1)) {
+          left[la[1]] = b; right[lb[1]] = a;
+          locations[a] = lb; locations[b] = la; score += delta;
+        }
+      }
+      if (!best || score < best.score) best = { score: score, tables: tables };
+      if (best.score === 0) break;
+    }
+    return best;
+  }
+  function generateMeals(options) {
+    options = options || {};
+    var context = roster(options.participants), people = context.people, n = people.length;
+    var rawSlots = list(options.mealSlots, 'mealSlots');
+    if (!rawSlots.length || rawSlots.length > 30) fail('INVALID_MEAL_SLOTS', '식사 회차는 1~30개까지 지정할 수 있습니다.');
+    var slotIds = new Set();
+    var slots = rawSlots.map(function (raw, index) {
+      var slot = typeof raw === 'string' ? { id: raw } : raw;
+      if (!slot || typeof slot !== 'object') fail('INVALID_MEAL_SLOT', '식사 회차가 올바르지 않습니다.');
+      var id = clean(slot.id != null ? slot.id : slot.seatKey != null ? slot.seatKey : 'meal-' + (index + 1));
+      if (!id || id === '*' || slotIds.has(id)) fail('DUPLICATE_MEAL_SLOT', '식사 회차 ID는 비어 있지 않고 서로 달라야 합니다.', { slotId: id });
+      slotIds.add(id);
+      var excluded = new Set(list(slot.excludedParticipantIds, 'excludedParticipantIds').map(function (ref) { return context.resolve(ref); }));
+      var label = clean(slot.label) || (slot.day ? slot.day + '일차 ' + (slot.type === 'dinner' ? '저녁' : '점심') : id);
+      return { id: id, label: label, excluded: excluded };
+    });
+    people.forEach(function (person) { person.excludedMeals.forEach(function (id) {
+      if (!slotIds.has(id)) fail('UNKNOWN_MEAL_SLOT', '불참 회차 ID가 식사 일정에 없습니다.', { participantId: person.id, slotId: id });
+    }); });
+    var tableCount = integer(options.tableCount, '테이블 수', 1, 100, Math.max(1, Math.ceil(n / 6)));
+    var explicitCaps = options.tableCapacities == null ? null : list(options.tableCapacities, 'tableCapacities').map(function (v) { return integer(v, '테이블 정원', 0, MAX_PEOPLE); });
+    if (explicitCaps && explicitCaps.length !== tableCount) fail('CAPACITY_LENGTH', '테이블별 정원 개수와 테이블 수가 다릅니다.');
+    var uniformCap = options.tableCapacity == null ? null : integer(options.tableCapacity, '테이블 정원', 1, MAX_PEOPLE);
+    if (explicitCaps && uniformCap != null) fail('AMBIGUOUS_CAPACITY', 'tableCapacity와 tableCapacities 중 하나만 지정해주세요.');
+    var fixedEntries = list(options.fixedAssignments, 'fixedAssignments').map(function (entry) {
+      if (!entry || typeof entry !== 'object') fail('INVALID_FIXED_ASSIGNMENT', '고정 배정 정보가 올바르지 않습니다.');
+      var slotId = clean(entry.slotId == null ? '*' : entry.slotId);
+      if (slotId !== '*' && !slotIds.has(slotId)) fail('UNKNOWN_MEAL_SLOT', '고정 배정 회차 ID가 일정에 없습니다.', { slotId: slotId });
+      return { id: context.resolve(entry.participantId != null ? { id: entry.participantId } : entry.participant),
+        slotId: slotId, table: integer(entry.table, '고정 테이블', 1, tableCount) - 1 };
+    });
+    var flags = mealConstraints(options, context), history = new Float64Array(n * n);
+    list(options.priorMeetings, 'priorMeetings').forEach(function (entry) {
+      if (!entry || typeof entry !== 'object') fail('INVALID_HISTORY', '이전 동석 정보가 올바르지 않습니다.');
+      var ids = list(entry.participantIds, 'priorMeetings.participantIds').map(function (ref) { return context.resolve(ref); });
+      if (ids.length < 2 || new Set(ids).size !== ids.length) fail('INVALID_HISTORY', '이전 동석에는 서로 다른 참가자 2명 이상이 필요합니다.');
+      var count = integer(entry.count, '이전 동석 횟수', 1, 10000, 1);
+      for (var i = 0; i < ids.length; i++) for (var j = i + 1; j < ids.length; j++) {
+        history[ids[i] * n + ids[j]] += count; history[ids[j] * n + ids[i]] += count;
+      }
+    });
+    var defaults = { company: 12, roommate: 30, adjacent: 15, repeat: 40 }, weights = {};
+    Object.keys(defaults).forEach(function (key) { weights[key] = integer(options.weights && options.weights[key], '가중치 ' + key, 0, 1000, defaults[key]); });
+    var attempts = integer(options.attempts, '탐색 횟수', 1, 32, n <= 100 ? 12 : 8);
+    var iterations = integer(options.swapIterations, '교환 탐색 횟수', 0, 100000, Math.max(100, n * 60));
+    var random = randomFor(options.seed), violations = [], outputRows = people.map(function () { return []; });
+    var totalScore = 0, totalPairs = 0, repeatPairs = 0, newPairs = 0, assignedCount = 0;
+    people.forEach(function (person) { if (!person.company) violations.push(warning('UNKNOWN_COMPANY', '기관 정보가 없어 같은 기관 동석을 판단할 수 없습니다.', [person.id], { category: 'data' })); });
+    var assignments = slots.map(function (slot) {
+      var active = people.filter(function (p) { return !slot.excluded.has(p.index) && p.excludedMeals.indexOf(slot.id) < 0; }).map(function (p) { return p.index; });
+      var activeSet = new Set(active), fixed = Array.from({ length: tableCount }, function () { return []; }), fixedPeople = new Set();
+      fixedEntries.filter(function (entry) { return entry.slotId === '*' || entry.slotId === slot.id; }).forEach(function (entry) {
+        if (!activeSet.has(entry.id)) fail('EXCLUDED_FIXED_CONFLICT', '불참자가 해당 회차에 고정 배정되어 있습니다.', { participantId: people[entry.id].id, slotId: slot.id });
+        if (fixedPeople.has(entry.id)) fail('DUPLICATE_FIXED_ASSIGNMENT', '같은 회차에 참가자의 고정 배정이 중복됩니다.', { participantId: people[entry.id].id, slotId: slot.id });
+        fixedPeople.add(entry.id); fixed[entry.table].push(entry.id);
+      });
+      var capacities = explicitCaps || Array(tableCount).fill(uniformCap == null ? Math.ceil(active.length / tableCount) : uniformCap);
+      var targets = targetSizes(active.length, capacities, fixed), matrix = new Float64Array(n * n);
+      for (var i = 0; i < n; i++) for (var j = i + 1; j < n; j++) {
+        var flag = flags[i * n + j], prior = history[i * n + j];
+        var cost = (flag & 1 ? weights.company : 0) + (flag & 2 ? weights.roommate : 0) + (flag & 4 ? weights.adjacent : 0) + prior * weights.repeat;
+        matrix[i * n + j] = cost; matrix[j * n + i] = cost;
+      }
+      var plan = optimizeTables(active, fixed, targets, matrix, n, random, attempts, iterations);
+      validateCoverage(plan.tables, active); totalScore += plan.score; assignedCount += active.length;
+      people.forEach(function (p) { outputRows[p.index].push(activeSet.has(p.index) ? '' : '불참'); });
+      var tables = plan.tables.map(function (members, t) {
+        members.sort(function (a, b) { return a - b; });
+        members.forEach(function (id) { outputRows[id][outputRows[id].length - 1] = (t + 1) + '번'; });
+        for (var i = 0; i < members.length; i++) for (var j = i + 1; j < members.length; j++) {
+          var a = members[i], b = members[j], flag = flags[a * n + b], prior = history[a * n + b];
+          var pair = [people[a].id, people[b].id], extra = { slotId: slot.id, table: t + 1 };
+          if (flag & 1) violations.push(warning('SAME_COMPANY', '같은 기관 참가자가 동석합니다.', pair, extra));
+          if (flag & 2) violations.push(warning('ROOMMATE_OVERLAP', '룸메이트가 동석합니다.', pair, extra));
+          if (flag & 4) violations.push(warning('SEAT_NEIGHBOR_OVERLAP', '강의장 인접 좌석 참가자가 동석합니다.', pair, extra));
+          if (prior > 0) { repeatPairs++; violations.push(warning('REPEATED_MEETING', '이전에 동석했던 참가자가 다시 동석합니다.', pair, Object.assign({ priorMeetings: prior }, extra))); }
+          else newPairs++;
+          totalPairs++; history[a * n + b]++; history[b * n + a]++;
+        }
+        return { table: t + 1, capacity: capacities[t], participantIds: members.map(function (id) { return people[id].id; }), names: members.map(function (id) { return people[id].name; }) };
+      });
+      var enabledSizes = tables.filter(function (t) { return t.capacity > 0; }).map(function (t) { return t.participantIds.length; });
+      if (enabledSizes.length && Math.max.apply(null, enabledSizes) - Math.min.apply(null, enabledSizes) > 1) violations.push(warning('TABLE_IMBALANCE', '고정 배정 또는 정원 차이로 테이블 인원이 균등하지 않습니다.', [], { slotId: slot.id }));
+      return { slotId: slot.id, label: slot.label, tables: tables, excludedParticipantIds: people.filter(function (p) { return !activeSet.has(p.index); }).map(function (p) { return p.id; }) };
+    });
+    return result(assignments, violations, { participantCount: n, mealCount: slots.length, tableCount: tableCount,
+      assignedCount: assignedCount, totalPairMeetings: totalPairs, repeatedPairMeetings: repeatPairs, newPairMeetings: newPairs,
+      objectiveScore: totalScore, seed: String(options.seed == null ? 'vup-1' : options.seed), optimalityGuaranteed: false },
+      { participantIds: people.map(function (p) { return p.id; }), rows: outputRows,
+        preview: assignments.map(function (slot) { return { slotId: slot.slotId, label: slot.label, tables: slot.tables }; }) });
+  }
+
+  function roomPairCost(a, b, people, preferredGap) {
+    if (a == null || b == null) return 0;
+    var left = people[a], right = people[b], score = 0;
+    if (left.snoring !== 'unknown' && right.snoring !== 'unknown' && left.snoring !== right.snoring) score += 500;
+    if ((left.snoring === 'unknown') !== (right.snoring === 'unknown')) score += 80;
+    else if (left.snoring === 'unknown') score += 20;
+    if (left.company && right.company && left.company !== right.company) score += 60;
+    if (left.age != null && right.age != null) {
+      var gap = Math.abs(left.age - right.age);
+      score += gap + (gap > preferredGap ? 30 : 0);
+    }
+    return score;
+  }
+  function pairRoomGroup(ids, people, gap, random, attempts, iterations) {
+    if (!ids.length) return [];
+    var padded = ids.slice();
+    if (padded.length % 2) padded.push(null);
+    var best = null;
+    for (var attempt = 0; attempt < attempts; attempt++) {
+      var remaining = padded.map(function (id) { return { id: id, tie: random() }; }).sort(function (a, b) { return a.tie - b.tie; }).map(function (item) { return item.id; });
+      var pairs = [];
+      while (remaining.length) {
+        var a = remaining.pop(), chosen = 0, min = Infinity;
+        for (var k = 0; k < remaining.length; k++) {
+          var cost = roomPairCost(a, remaining[k], people, gap) + random() * 0.001;
+          if (cost < min) { min = cost; chosen = k; }
+        }
+        pairs.push([a, remaining.splice(chosen, 1)[0]]);
+      }
+      var score = pairs.reduce(function (sum, pair) { return sum + roomPairCost(pair[0], pair[1], people, gap); }, 0);
+      for (var step = 0; step < iterations && pairs.length > 1 && score > 0; step++) {
+        var x = Math.floor(random() * pairs.length), y = Math.floor(random() * pairs.length);
+        if (x === y) continue;
+        var p = pairs[x], q = pairs[y], orientation = random() < 0.5 ? 0 : 1;
+        var np = [p[0], q[orientation]], nq = [p[1], q[1 - orientation]];
+        var delta = roomPairCost(np[0], np[1], people, gap) + roomPairCost(nq[0], nq[1], people, gap) - roomPairCost(p[0], p[1], people, gap) - roomPairCost(q[0], q[1], people, gap);
+        if (delta < 0 || (delta === 0 && random() < 0.1)) { pairs[x] = np; pairs[y] = nq; score += delta; }
+      }
+      if (!best || score < best.score) best = { score: score, pairs: pairs };
+      if (score === 0) break;
+    }
+    return best.pairs.map(function (pair) { return pair.filter(function (id) { return id != null; }); });
+  }
+  function generateRooms(options) {
+    options = options || {};
+    var context = roster(options.participants), people = context.people, violations = [];
+    people.forEach(function (p) { p.roomType = roomType(p.roomType); });
+    var eligible = people.filter(function (p) { return p.roomType !== 'none'; });
+    var gap = integer(options.preferredAgeGap, '희망 최대 나이 차이', 0, 120, 10);
+    var attempts = integer(options.attempts, '탐색 횟수', 1, 32, 8);
+    var iterations = integer(options.swapIterations, '교환 탐색 횟수', 0, 100000, Math.max(100, people.length * 30));
+    var inventorySpecified = options.singleRoomCount != null || options.doubleRoomCount != null;
+    var singles = inventorySpecified ? integer(options.singleRoomCount, '1인실 수', 0, MAX_PEOPLE, 0) : Infinity;
+    var doubles = inventorySpecified ? integer(options.doubleRoomCount, '2인실 수', 0, MAX_PEOPLE, 0) : Infinity;
+    var roomLimit = integer(options.roomCount, '전체 객실 수', 0, MAX_PEOPLE, MAX_PEOPLE);
+    var usedPeople = new Set(), usedRooms = new Set(), rooms = [];
+    list(options.fixedRooms, 'fixedRooms').forEach(function (entry) {
+      if (!entry || typeof entry !== 'object') fail('INVALID_FIXED_ROOM', '고정 객실 정보가 올바르지 않습니다.');
+      var room = integer(entry.room, '객실 번호', 1, 100000);
+      if (usedRooms.has(room)) fail('DUPLICATE_ROOM', '고정 객실 번호가 중복됩니다.', { room: room });
+      usedRooms.add(room);
+      var ids = list(entry.participantIds, 'fixedRooms.participantIds').map(function (ref) { return context.resolve(ref); });
+      if (ids.length < 1 || ids.length > 2) fail('INVALID_ROOM_OCCUPANCY', '객실은 1~2명까지 배정할 수 있습니다.');
+      ids.forEach(function (id) {
+        if (usedPeople.has(id)) fail('DUPLICATE_FIXED_ASSIGNMENT', '참가자의 고정 객실 배정이 중복됩니다.', { id: people[id].id });
+        if (people[id].roomType === 'none') fail('EXCLUDED_FIXED_CONFLICT', '숙박하지 않는 참가자가 객실에 고정되어 있습니다.');
+        usedPeople.add(id);
+      });
+      if (ids.length === 2 && ids.some(function (id) { return people[id].roomType === 'single'; })) fail('SINGLE_ROOM_CONFLICT', '1인실 신청자를 합방할 수 없습니다.');
+      if (ids.length === 2 && (people[ids[0]].gender === 'unknown' || people[ids[0]].gender !== people[ids[1]].gender)) fail('GENDER_CONFLICT', '성별이 다르거나 확인되지 않은 참가자는 합방할 수 없습니다.');
+      var capacity = integer(entry.capacity, '객실 정원', 1, 2, ids.length);
+      if (capacity < ids.length) fail('FIXED_CAPACITY_CONFLICT', '고정 객실 정원을 초과했습니다.');
+      if (capacity === 1) singles--; else doubles--;
+      rooms.push({ room: room, ids: ids, capacity: capacity, fixed: true });
+    });
+    if (singles < 0 || doubles < 0) fail('INSUFFICIENT_ROOMS', '고정 배정에 필요한 객실 재고가 부족합니다.');
+    var groups = { male: [], female: [] }, solo = [];
+    eligible.forEach(function (p) {
+      if (p.gender === 'unknown') violations.push(warning('UNKNOWN_GENDER', '성별 확인 전까지 혼자 사용하는 객실에 배정했습니다.', [p.id], { category: 'data' }));
+      if (p.snoring === 'unknown' && p.roomType !== 'single') violations.push(warning('UNKNOWN_SNORING', '코골이 정보가 확인되지 않아 동일 여부를 판단하지 않았습니다.', [p.id], { category: 'data' }));
+      if (p.age == null && p.roomType !== 'single') violations.push(warning('UNKNOWN_AGE', '나이 정보가 없어 나이 차이를 판단하지 않았습니다.', [p.id], { category: 'data' }));
+      if (!p.company && p.roomType !== 'single') violations.push(warning('UNKNOWN_COMPANY', '기관 정보가 없어 같은 기관 합방 선호를 판단하지 않았습니다.', [p.id], { category: 'data' }));
+      if (usedPeople.has(p.index)) return;
+      if (p.roomType === 'single' || p.gender === 'unknown') solo.push([p.index]);
+      else groups[p.gender].push(p.index);
+    });
+    var random = randomFor(options.seed), pending = [];
+    ['male', 'female'].forEach(function (key) {
+      pairRoomGroup(groups[key], people, gap, random, attempts, iterations).forEach(function (ids) { if (ids.length === 1) solo.push(ids); else pending.push(ids); });
+    });
+    // A double-room request may require a private room when inventory or gender
+    // constraints prevent sharing. Keep occupancy safe and surface this for review.
+    if (pending.length > doubles) {
+      pending.sort(function (a, b) { return roomPairCost(a[0], a[1], people, gap) - roomPairCost(b[0], b[1], people, gap); });
+      while (pending.length > doubles) {
+        var split = pending.pop(); solo.push([split[0]], [split[1]]);
+      }
+    }
+    doubles -= pending.length;
+    var nextRoom = 1;
+    function addRoom(ids, capacity) {
+      while (usedRooms.has(nextRoom)) nextRoom++;
+      rooms.push({ room: nextRoom, ids: ids, capacity: capacity, fixed: false }); usedRooms.add(nextRoom++);
+    }
+    pending.forEach(function (ids) { addRoom(ids, 2); });
+    solo.sort(function (a, b) { return (people[a[0]].roomType === 'single' ? 0 : 1) - (people[b[0]].roomType === 'single' ? 0 : 1) || a[0] - b[0]; });
+    solo.forEach(function (ids) {
+      if (singles > 0) { singles--; addRoom(ids, 1); }
+      else if (doubles > 0) { doubles--; addRoom(ids, 2); }
+      else fail('INSUFFICIENT_ROOMS', '독실·성별 미확인·홀수 인원을 위한 개별 객실이 부족합니다.');
+    });
+    if (rooms.length > roomLimit) fail('INSUFFICIENT_ROOMS', '필요 객실 수가 전체 객실 수를 초과합니다.', { neededRooms: rooms.length, roomCount: roomLimit });
+    validateCoverage(rooms.map(function (r) { return r.ids; }), eligible.map(function (p) { return p.index; }));
+    var score = 0;
+    var assignments = rooms.sort(function (a, b) { return a.room - b.room; }).map(function (room) {
+      var ids = room.ids, peopleIds = ids.map(function (id) { return people[id].id; }), extra = { room: room.room };
+      if (ids.length === 1 && people[ids[0]].roomType === 'double') violations.push(warning('DOUBLE_REQUEST_PRIVATE_ROOM', '2인실 신청자가 혼자 사용하는 객실에 배정되었습니다. 객실 비용과 안내를 확인해주세요.', peopleIds, extra));
+      if (ids.length === 2) {
+        var a = people[ids[0]], b = people[ids[1]];
+        if (a.snoring !== 'unknown' && b.snoring !== 'unknown' && a.snoring !== b.snoring) violations.push(warning('SNORING_MISMATCH', '코골이 응답이 다른 참가자가 합방합니다.', peopleIds, extra));
+        if (a.company && b.company && a.company !== b.company) violations.push(warning('DIFFERENT_COMPANY_ROOM', '서로 다른 기관 참가자가 합방합니다.', peopleIds, extra));
+        if (a.age != null && b.age != null && Math.abs(a.age - b.age) > gap) violations.push(warning('AGE_GAP', '희망 나이 차이를 초과하는 참가자가 합방합니다.', peopleIds, Object.assign({ ageGap: Math.abs(a.age - b.age) }, extra)));
+        score += roomPairCost(ids[0], ids[1], people, gap);
+      }
+      return { room: room.room, capacity: room.capacity, occupancy: ids.length, private: ids.length === 1, fixed: room.fixed,
+        participantIds: peopleIds, names: ids.map(function (id) { return people[id].name; }) };
+    });
+    return result(assignments, violations, { participantCount: people.length, assignedCount: eligible.length, roomCount: rooms.length,
+      privateRoomCount: rooms.filter(function (r) { return r.ids.length === 1; }).length, objectiveScore: score,
+      seed: String(options.seed == null ? 'vup-1' : options.seed), optimalityGuaranteed: false },
+      { excludedParticipantIds: people.filter(function (p) { return p.roomType === 'none'; }).map(function (p) { return p.id; }),
+        roommateRows: assignments.map(function (room) { return room.participantIds; }) });
+  }
+
+  function generateSeats(options) {
+    options = options || {};
+    var context = roster(options.participants), people = context.people;
+    var columns = integer(options.columns, '열 수', 1, 50, Math.max(1, Math.min(6, people.length)));
+    var rows = integer(options.rows, '행 수', 1, 100, Math.max(1, Math.ceil(people.length / columns)));
+    var grid = Array.from({ length: rows }, function () { return Array(columns).fill(null); });
+    var empty = new Set(), occupied = new Set(), fixedPeople = new Set();
+    function coordinate(entry) {
+      if (!entry || typeof entry !== 'object') fail('INVALID_SEAT', '좌석 좌표는 {row,column} 형식이어야 합니다.');
+      var r = integer(entry.row, '좌석 행', 1, rows) - 1, c = integer(entry.column, '좌석 열', 1, columns) - 1;
+      return { row: r, column: c, key: r + ':' + c };
+    }
+    list(options.emptySeats, 'emptySeats').forEach(function (entry) {
+      var seat = coordinate(entry);
+      if (empty.has(seat.key)) fail('DUPLICATE_EMPTY_SEAT', '빈 좌석 지정이 중복됩니다.');
+      empty.add(seat.key);
+    });
+    if (rows * columns - empty.size < people.length) fail('INSUFFICIENT_CAPACITY', '빈 좌석을 제외한 강의장 좌석 수가 부족합니다.');
+    list(options.fixedAssignments, 'fixedAssignments').forEach(function (entry) {
+      var seat = coordinate(entry), id = context.resolve(entry.participantId != null ? { id: entry.participantId } : entry.participant);
+      if (empty.has(seat.key)) fail('EMPTY_FIXED_CONFLICT', '빈 좌석에 참가자를 고정할 수 없습니다.');
+      if (occupied.has(seat.key)) fail('DUPLICATE_SEAT', '한 좌석에 두 참가자를 고정할 수 없습니다.');
+      if (fixedPeople.has(id)) fail('DUPLICATE_FIXED_ASSIGNMENT', '참가자의 고정 좌석이 중복됩니다.');
+      fixedPeople.add(id); occupied.add(seat.key); grid[seat.row][seat.column] = id;
+    });
+    var ordered = people.filter(function (p) { return !fixedPeople.has(p.index); }).sort(function (a, b) {
+      return a.name.localeCompare(b.name, 'ko', { numeric: true }) || a.company.localeCompare(b.company, 'ko') || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+    });
+    var cursor = 0;
+    for (var r = 0; r < rows; r++) for (var c = 0; c < columns; c++) {
+      if (!empty.has(r + ':' + c) && grid[r][c] == null && cursor < ordered.length) grid[r][c] = ordered[cursor++].index;
+    }
+    var assignments = [];
+    grid.forEach(function (row, r) { row.forEach(function (id, c) {
+      if (id != null) assignments.push({ participantId: people[id].id, name: people[id].name, row: r + 1, column: c + 1, seat: (r + 1) + '-' + (c + 1), fixed: fixedPeople.has(id) });
+    }); });
+    validateCoverage(grid.map(function (row) { return row.filter(function (id) { return id != null; }); }), people.map(function (p) { return p.index; }));
+    return result(assignments, [], { participantCount: people.length, assignedCount: assignments.length, rows: rows, columns: columns,
+      blockedSeatCount: empty.size, availableEmptySeatCount: rows * columns - empty.size - people.length, fixedCount: fixedPeople.size },
+      { grid: grid.map(function (row) { return row.map(function (id) { return id == null ? null : people[id].id; }); }),
+        nameGrid: grid.map(function (row) { return row.map(function (id) { return id == null ? '' : people[id].name; }); }),
+        emptySeats: list(options.emptySeats, 'emptySeats').map(function (entry) { return { row: Number(entry.row), column: Number(entry.column) }; }) });
+  }
+  return Object.freeze({ version: '1.0.0', generateMeals: generateMeals, generateRooms: generateRooms, generateSeats: generateSeats });
+}));

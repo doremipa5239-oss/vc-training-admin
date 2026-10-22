@@ -1,0 +1,6304 @@
+<!-- admin-style-1 : 디자인 변수 · 공통 컴포넌트(버튼·폼·카드·모달·토스트) · 로그인/사이드바/운영 홈/프로필/강의 개설 등 기본 화면 -->
+<style>
+  :root {
+    --violet-950: #211044;
+    --violet-900: #32166b;
+    --violet-800: #45219a;
+    --violet-700: #5b35d5;
+    --violet-300: #bca8fa;
+    --violet-200: #d9ceff;
+    --violet-100: #eee9ff;
+    --violet-50: #f8f6ff;
+    --pink-500: #dc5bd2;
+    --pink-100: #fce7fa;
+    --ink-950: #171321;
+    --ink-900: #211c2c;
+    --ink-800: #312b3e;
+    --ink-700: #494255;
+    --ink-600: #635c6f;
+    --line: #e7e2eb;
+    --line-strong: #d8d0df;
+    --surface: #ffffff;
+    --surface-soft: #faf9fc;
+    --surface-violet: #f7f4ff;
+    --success-bg: #e8f7f1;
+    --warning-bg: #fff2df;
+    --danger-bg: #ffedf0;
+    --info-bg: #eaf4ff;
+    --sidebar-width: 278px;
+    --shadow-sm: 0 4px 14px rgba(45, 32, 64, 0.06);
+    --shadow-md: 0 14px 38px rgba(45, 32, 64, 0.1);
+    --shadow-lg: 0 24px 70px rgba(39, 22, 71, 0.18);
+    --radius-sm: 12px;
+    --radius-md: 18px;
+    --radius-lg: 26px;
+    --radius-xl: 34px;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    min-height: 100%;
+  }
+
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+    overflow-x: hidden;
+    font-family:
+      Pretendard,
+      "Noto Sans KR",
+      "Malgun Gothic",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button {
+    color: inherit;
+  }
+
+  a {
+    color: var(--violet-700);
+  }
+
+  :focus-visible {
+    outline: 3px solid rgba(109, 69, 232, 0.28);
+    outline-offset: 2px;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  .portal-root {
+    min-height: 100vh;
+  }
+
+  /* Login */
+  .login-view {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(430px, 1.08fr) minmax(460px, 0.92fr);
+    min-height: 100vh;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .login-brand-panel {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 100vh;
+    color: #fff;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 78% 13%, rgba(224, 103, 214, 0.72), transparent 31%),
+      radial-gradient(circle at 13% 83%, rgba(111, 79, 235, 0.9), transparent 37%),
+      linear-gradient(145deg, #2c145d 0%, #5021a5 48%, #7d45dd 100%);
+  }
+
+  .login-brand-panel::before,
+  .login-brand-panel::after {
+    position: absolute;
+    content: "";
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    pointer-events: none;
+  }
+
+  .login-brand-panel::before {
+    right: -180px;
+    bottom: -250px;
+    width: 620px;
+    height: 620px;
+  }
+
+  .login-brand-panel::after {
+    right: -72px;
+    bottom: -132px;
+    width: 380px;
+    height: 380px;
+  }
+
+  .login-brand-content,
+  .login-brand-footer {
+    position: relative;
+    z-index: 2;
+  }
+
+  .brand-lockup {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    text-align: left;
+  }
+
+  .brand-lockup > span:last-child {
+    display: grid;
+    line-height: 1.1;
+  }
+
+  .brand-lockup strong {
+    font-size: 17.1px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+  }
+
+  .brand-lockup small {
+    margin-top: 5px;
+    color: inherit;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    opacity: 0.7;
+  }
+
+  .brand-mark {
+    display: inline-grid;
+    width: 43px;
+    height: 43px;
+    place-items: center;
+    border-radius: 14px;
+    color: #fff;
+    background: linear-gradient(140deg, var(--violet-600), var(--pink-500));
+    box-shadow: 0 10px 24px rgba(71, 34, 151, 0.25);
+    font-size: 19.8px;
+    font-weight: 950;
+    font-style: italic;
+  }
+
+  .brand-lockup-light .brand-mark {
+    color: var(--violet-800);
+    background: #fff;
+    box-shadow: 0 10px 30px rgba(25, 10, 56, 0.22);
+  }
+
+  .login-eyebrow {
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  .login-brand-panel h1 {
+    margin: 0;
+    letter-spacing: -0.045em;
+  }
+
+  .login-brand-copy {
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .login-feature-strip {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .login-feature-strip span {
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.88);
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+  }
+
+  .login-brand-footer {
+    color: rgba(255, 255, 255, 0.52);
+    letter-spacing: 0.12em;
+  }
+
+  .login-form-panel {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    min-height: 100vh;
+    place-items: center;
+  }
+
+  .login-mobile-brand {
+    display: none;
+  }
+
+  .login-kicker {
+    margin: 0 0 10px;
+  }
+
+  .login-card h2 {
+    margin: 0;
+    color: var(--ink-950);
+    font-size: 34.2px;
+    line-height: 1.2;
+    letter-spacing: -0.045em;
+  }
+
+  .field {
+    display: block;
+  }
+
+  .field-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--ink-700);
+    font-size: 11.7px;
+  }
+
+  .field-control {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .field-leading {
+    position: absolute;
+    left: 16px;
+    display: grid;
+    width: 29px;
+    height: 29px;
+    place-items: center;
+    border-radius: 9px;
+    color: var(--violet-700);
+    background: var(--violet-100);
+    font-weight: 950;
+    pointer-events: none;
+  }
+
+  .field-control input {
+    width: 100%;
+    border: 1px solid var(--line-strong);
+    border-radius: 15px;
+    padding: 0 72px 0 58px;
+    color: var(--ink-900);
+    background: #fff;
+    font-weight: 700;
+    transition: 160ms ease;
+  }
+
+  .field-control input:hover {
+    border-color: var(--violet-300);
+  }
+
+  .field-control input:focus {
+    border-color: var(--violet-600);
+    outline: 0;
+    box-shadow: 0 0 0 4px rgba(109, 69, 232, 0.1);
+  }
+
+  .password-toggle {
+    position: absolute;
+    right: 10px;
+    min-width: 48px;
+    height: 36px;
+    border: 0;
+    border-radius: 10px;
+    color: var(--ink-500);
+    background: transparent;
+    cursor: pointer;
+    font-size: 10.8px;
+    font-weight: 800;
+  }
+
+  .password-toggle:hover {
+    color: var(--violet-700);
+    background: var(--violet-50);
+  }
+
+  .form-error {
+    margin: 4px 0 16px;
+    border: 1px solid #facbd4;
+    border-radius: var(--radius-sm);
+    padding: 11px 13px;
+    color: var(--danger);
+    background: var(--danger-bg);
+    font-size: 11.7px;
+    font-weight: 700;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    transition:
+      transform 150ms ease,
+      box-shadow 150ms ease,
+      background 150ms ease,
+      border-color 150ms ease;
+  }
+
+  .btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 13px 28px rgba(91, 53, 213, 0.3);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--violet-300);
+    color: var(--violet-700);
+    background: var(--violet-50);
+  }
+
+  .btn-text {
+    box-shadow: none;
+  }
+
+  .btn-login {
+    justify-content: space-between;
+    padding: 0 20px;
+  }
+
+  /* App shell */
+  .app-view {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 94% 1%, rgba(222, 210, 255, 0.43), transparent 22%),
+      var(--surface-soft);
+  }
+
+  .sidebar {
+    position: fixed;
+    z-index: 40;
+    inset: 0 auto 0 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #ece8f0;
+    color: var(--ink-700);
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 12px 0 34px rgba(48, 31, 71, 0.04);
+  }
+
+  .sidebar-head {
+    display: flex;
+    min-height: var(--topbar-height);
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 26px;
+  }
+
+  .sidebar-brand {
+    cursor: pointer;
+  }
+
+  .sidebar-close {
+    display: none;
+    width: 38px;
+    height: 38px;
+    border: 0;
+    border-radius: 10px;
+    color: var(--ink-600);
+    background: var(--surface-soft);
+    cursor: pointer;
+    font-size: 23.4px;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 17px 16px 24px;
+  }
+
+  .nav-label {
+    margin: 0 12px 9px;
+    color: var(--ink-400);
+  }
+
+  .nav-label-spaced {
+    margin-top: 25px;
+  }
+
+  .nav-item {
+    position: relative;
+    display: flex;
+    width: 100%;
+    min-height: 47px;
+    align-items: center;
+    gap: 12px;
+    border: 0;
+    border-radius: 13px;
+    padding: 0 13px;
+    color: var(--ink-600);
+    background: transparent;
+    cursor: pointer;
+    font-size: 11.7px;
+    text-align: left;
+    transition: 150ms ease;
+  }
+
+  .nav-item:hover {
+    color: var(--violet-700);
+    background: var(--violet-50);
+  }
+
+  .nav-item.active {
+    color: var(--violet-800);
+  }
+
+  .nav-item.active::before {
+    position: absolute;
+    left: 0;
+    width: 4px;
+    height: 22px;
+    border-radius: 0 6px 6px 0;
+    content: "";
+    background: var(--violet-600);
+  }
+
+  .nav-icon {
+    display: grid;
+    width: 25px;
+    height: 25px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 8px;
+    color: inherit;
+    background: rgba(91, 53, 213, 0.07);
+    font-size: 14.4px;
+    font-weight: 900;
+  }
+
+  .nav-badge {
+    min-width: 22px;
+    margin-left: auto;
+    border-radius: 999px;
+    padding: 2px 6px;
+    color: #fff;
+    background: var(--violet-600);
+    text-align: center;
+  }
+
+  .nav-badge-warm {
+    background: var(--danger);
+  }
+
+  .sidebar-footer {
+    border-top: 1px solid var(--line);
+    padding: 16px;
+  }
+
+  .sidebar-user {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 11px;
+    border-radius: 15px;
+    padding: 10px 12px;
+    background: var(--surface-soft);
+  }
+
+  /* 로그아웃 화살표가 빠진 자리를 이름이 채우도록 합니다. */
+
+  .sidebar-user-copy strong,
+  .sidebar-user-copy small {
+    display: block;
+  }
+
+  .user-avatar {
+    display: grid;
+    width: 39px;
+    height: 39px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 13px;
+    color: #fff;
+    background: linear-gradient(140deg, var(--violet-700), var(--pink-500));
+    font-size: 12.6px;
+    font-weight: 900;
+  }
+
+  .sidebar-user-copy {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .sidebar-user-copy strong,
+  .sidebar-user-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar-user-copy strong {
+    color: var(--ink-800);
+    font-size: 11.7px;
+  }
+
+  .sidebar-user-copy small {
+    margin-top: 2px;
+    color: var(--ink-400);
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .workspace-shell {
+    min-height: 100vh;
+    margin-left: var(--sidebar-width);
+  }
+
+  .topbar {
+    position: sticky;
+    z-index: 25;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    backdrop-filter: blur(18px);
+  }
+
+  .topbar-leading,
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+  }
+
+  .topbar-leading {
+    gap: 13px;
+  }
+
+  .topbar-eyebrow {
+    margin: 0 0 2px;
+    color: var(--violet-700);
+  }
+
+  .topbar h1 {
+    margin: 0;
+  }
+
+  .mobile-menu-button {
+    display: none;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  /* Page foundations */
+  .page-stack {
+    display: grid;
+  }
+
+  .page-heading {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .page-heading-copy h2 {
+    margin: 0;
+    color: var(--ink-950);
+    font-size: clamp(24.3px, 2.7vw, 34.2px);
+    line-height: 1.2;
+    letter-spacing: -0.045em;
+  }
+
+  .page-heading-copy p {
+    margin: 9px 0 0;
+    color: var(--ink-500);
+    font-weight: 600;
+  }
+
+  .page-heading-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+  }
+
+  .panel-title {
+    margin: 0;
+  }
+
+  .panel-description {
+    margin: 6px 0 0;
+  }
+
+  .dashboard-hero {
+    position: relative;
+    display: grid;
+    color: #fff;
+    overflow: hidden;
+  }
+
+  .dashboard-hero::after {
+    position: absolute;
+    right: -110px;
+    bottom: -210px;
+    width: 430px;
+    height: 430px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 50%;
+  }
+
+  .hero-copy {
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-copy .hero-eyebrow {
+    margin: 0 0 11px;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 9.9px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+  }
+
+  .hero-copy h2 {
+    margin: 0;
+  }
+
+  .hero-copy p {
+    color: rgba(255, 255, 255, 0.76);
+    line-height: 1.7;
+  }
+
+  .hero-status {
+    position: relative;
+    z-index: 1;
+    justify-self: end;
+    width: min(330px, 100%);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 22px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.11);
+    backdrop-filter: blur(14px);
+  }
+
+  .hero-status-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 9.9px;
+    font-weight: 850;
+  }
+
+  .hero-status-value {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    margin-top: 10px;
+  }
+
+  .hero-status-value strong {
+    font-size: 37.8px;
+    line-height: 1;
+  }
+
+  .hero-status-value span {
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 700;
+  }
+
+  .hero-progress {
+    height: 8px;
+    margin-top: 17px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  .hero-progress > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #fff;
+  }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .metric-card {
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .metric-card::after {
+    position: absolute;
+    right: -20px;
+    bottom: -32px;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: var(--violet-50);
+  }
+
+  .metric-label {
+    position: relative;
+    z-index: 1;
+  }
+
+  .metric-value {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+  }
+
+  .metric-value strong {
+    line-height: 1;
+    letter-spacing: -0.045em;
+  }
+
+  .metric-value span {
+    font-weight: 700;
+  }
+
+  .dashboard-columns {
+    display: grid;
+  }
+
+  /* Courses */
+  .course-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .course-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 18px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 17px 18px;
+    background: #fff;
+    transition: 160ms ease;
+  }
+
+  .course-row:hover {
+    border-color: var(--violet-200);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .course-row-main {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .course-date-tile {
+    display: grid;
+    width: 54px;
+    height: 54px;
+    flex: 0 0 auto;
+    place-items: center;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .course-row-copy {
+    min-width: 0;
+  }
+
+  .course-row-copy strong {
+    display: block;
+    overflow: hidden;
+    color: var(--ink-900);
+    font-size: 12.6px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .course-row-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-top: 5px;
+    color: var(--ink-400);
+    font-size: 9.9px;
+    font-weight: 700;
+  }
+
+  .course-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .course-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .course-card {
+    display: flex;
+    flex-direction: column;
+    transition: 180ms ease;
+  }
+
+  .course-card:hover {
+    border-color: var(--violet-200);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .course-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .course-card-meta {
+    display: grid;
+  }
+
+  .course-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .readiness-mini {
+    color: var(--ink-400);
+  }
+
+  .mini-progress span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--violet-600), var(--pink-500));
+  }
+
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  .status-chip::before {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    content: "";
+    background: currentColor;
+  }
+
+  .status-upcoming {
+    color: var(--info);
+    background: var(--info-bg);
+  }
+
+  .status-active {
+    color: var(--success);
+    background: var(--success-bg);
+  }
+
+  .status-past {
+    color: var(--ink-500);
+    background: #f0eef2;
+  }
+
+  .status-blocked {
+    color: var(--danger);
+    background: var(--danger-bg);
+  }
+
+  .filter-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .filter-tabs {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .filter-tab,
+  .course-tab {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .search-box {
+    position: relative;
+  }
+
+  .search-box input {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: var(--surface-soft);
+    font-weight: 700;
+  }
+
+  .search-box::before {
+    position: absolute;
+    left: 14px;
+    color: var(--ink-400);
+    content: "⌕";
+    font-weight: 900;
+  }
+
+  /* Forms */
+  .form-section {
+    display: grid;
+    gap: 20px;
+  }
+
+  .form-section + .form-section {
+    margin-top: 30px;
+    border-top: 1px solid var(--line);
+    padding-top: 30px;
+  }
+
+  .section-heading {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .section-number {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 11px;
+    color: var(--violet-700);
+    background: var(--violet-100);
+    font-size: 10.8px;
+    font-weight: 950;
+  }
+
+  .section-heading h3 {
+    margin: 1px 0 0;
+  }
+
+  .section-heading p {
+    margin: 4px 0 0;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form-grid-three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .form-field {
+    display: grid;
+    align-content: start;
+  }
+
+  .form-field.span-2 {
+    grid-column: span 2;
+  }
+
+  .form-field.span-all {
+    grid-column: 1 / -1;
+  }
+
+  .form-field label,
+  .field-caption {
+    color: var(--ink-700);
+    font-size: 10.8px;
+    font-weight: 850;
+  }
+
+  .required::after {
+    color: var(--danger);
+  }
+
+  .form-field input,
+  .form-field select,
+  .form-field textarea,
+  .inline-input {
+    width: 100%;
+    transition: 150ms ease;
+  }
+
+  .form-field textarea {
+    resize: vertical;
+    line-height: 1.6;
+  }
+
+  .choice-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .choice-card {
+    position: relative;
+  }
+
+  .choice-card input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .choice-card span {
+    display: grid;
+    min-height: 88px;
+    align-content: center;
+    gap: 5px;
+    border: 1px solid var(--line-strong);
+    border-radius: 15px;
+    padding: 15px;
+    color: var(--ink-700);
+    background: #fff;
+    cursor: pointer;
+    font-size: 11.7px;
+    font-weight: 850;
+    transition: 150ms ease;
+  }
+
+  .choice-card span small {
+    color: var(--ink-400);
+    font-size: 9px;
+    font-weight: 650;
+  }
+
+  .choice-card input:checked + span {
+    border-color: var(--violet-500);
+    color: var(--violet-800);
+    background: var(--violet-50);
+    box-shadow: inset 0 0 0 1px var(--violet-500);
+  }
+
+  .date-input-grid {
+    display: grid;
+  }
+
+  .meal-slot-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(110px, 1fr));
+    gap: 10px;
+  }
+
+  .check-tile {
+    position: relative;
+  }
+
+  .check-tile input {
+    position: absolute;
+    opacity: 0;
+  }
+
+  .check-tile span {
+    display: flex;
+    min-height: 46px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    color: var(--ink-600);
+    background: #fff;
+    cursor: pointer;
+    font-size: 9.9px;
+    font-weight: 800;
+  }
+
+  .check-tile input:checked + span {
+    border-color: var(--violet-500);
+    color: var(--violet-800);
+    background: var(--violet-100);
+  }
+
+  .form-actions {
+    align-items: center;
+    border-top: 1px solid var(--line);
+  }
+
+  .info-callout,
+  .warning-callout,
+  .success-callout {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+  }
+
+  .info-callout {
+    border: 1px solid #d7e8fc;
+  }
+
+  .warning-callout {
+    border: 1px solid #f5d7ae;
+  }
+
+  .success-callout {
+    border: 1px solid #ccebdd;
+  }
+
+  /* Course detail */
+  .course-detail-hero {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .course-detail-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  .course-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .course-detail-title {
+    margin: 15px 0 0;
+    line-height: 1.35;
+    letter-spacing: -0.045em;
+  }
+
+  .course-detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px 16px;
+  }
+
+  .course-detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 9px;
+  }
+
+  .course-link-box {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .course-link-box code {
+    flex: 1;
+    overflow: hidden;
+    font-family: inherit;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .course-tabs {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .course-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .course-tab {
+    flex: 0 0 auto;
+  }
+
+  .health-item {
+    min-height: 96px;
+  }
+
+  .health-item strong {
+    display: block;
+    margin-top: 11px;
+    color: var(--ink-700);
+    font-size: 9.9px;
+  }
+
+  .operation-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .operation-card {
+    display: flex;
+    min-height: 150px;
+    flex-direction: column;
+    border: 1px solid var(--line);
+    border-radius: 19px;
+    padding: 20px;
+    background: #fff;
+  }
+
+  .operation-card h4 {
+    margin: 0;
+    color: var(--ink-900);
+    font-size: 13.5px;
+  }
+
+  .operation-card p {
+    margin: 7px 0 19px;
+    color: var(--ink-500);
+    font-weight: 650;
+  }
+
+  .operation-card .btn {
+    align-self: flex-start;
+    margin-top: auto;
+  }
+
+  /* Uploads */
+  .upload-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .upload-card {
+    position: relative;
+    display: grid;
+    min-height: 170px;
+    align-content: center;
+    justify-items: center;
+    padding: 20px;
+    color: var(--ink-500);
+    text-align: center;
+    transition: 160ms ease;
+  }
+
+  .upload-card:hover,
+  .upload-card.dragover {
+    border-color: var(--violet-600);
+    background: var(--violet-100);
+  }
+
+  .upload-card input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    opacity: 0;
+  }
+
+  .upload-icon {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: 14px;
+    color: var(--violet-700);
+    background: #fff;
+    box-shadow: var(--shadow-sm);
+    font-size: 17.1px;
+    font-weight: 900;
+  }
+
+  .upload-card strong {
+    margin-top: 12px;
+    color: var(--ink-800);
+    font-size: 11.7px;
+  }
+
+  .upload-card span {
+    margin-top: 5px;
+    font-size: 9px;
+    font-weight: 650;
+  }
+
+  .upload-card.has-file {
+    color: var(--success);
+  }
+
+  .wide-uploader {
+    position: relative;
+    min-height: 150px;
+    place-items: center;
+  }
+
+  .wide-uploader input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    opacity: 0;
+  }
+
+  .wide-uploader span {
+    display: block;
+    margin-top: 5px;
+    color: var(--ink-400);
+    font-size: 9.9px;
+    font-weight: 650;
+  }
+
+  .upload-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 14px;
+  }
+
+  .selected-file-summary {
+    color: var(--ink-500);
+    font-size: 9.9px;
+    font-weight: 700;
+  }
+
+  .file-list {
+    display: grid;
+    gap: 9px;
+  }
+
+  .file-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    border: 1px solid var(--line);
+    border-radius: 15px;
+    padding: 13px 14px;
+    background: #fff;
+  }
+
+  .file-row-main {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 11px;
+  }
+
+  .file-type {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 11px;
+    color: var(--violet-700);
+    background: var(--violet-50);
+    font-size: 9px;
+    font-weight: 950;
+  }
+
+  .file-row-copy {
+    min-width: 0;
+  }
+
+  .file-row-copy strong {
+    display: block;
+    overflow: hidden;
+    color: var(--ink-800);
+    font-size: 10.8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-row-copy span {
+    color: var(--ink-400);
+    font-size: 9px;
+    font-weight: 650;
+  }
+
+  .file-row-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .photo-card {
+    position: relative;
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .photo-card img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 0.78;
+    object-fit: cover;
+    background: var(--surface-soft);
+  }
+
+  .photo-card-copy {
+    padding: 10px;
+  }
+
+  .photo-card-copy strong {
+    display: block;
+    overflow: hidden;
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .photo-delete {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border: 0;
+    border-radius: 10px;
+    color: #fff;
+    background: rgba(28, 21, 36, 0.68);
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+  }
+
+  /* Settings, switch */
+  .settings-stack {
+    display: grid;
+    gap: 14px;
+  }
+
+  .setting-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 24px;
+    padding: 16px 0;
+  }
+
+  .setting-copy strong {
+    display: block;
+  }
+
+  .setting-copy span {
+    display: block;
+  }
+
+  .setting-control {
+    min-width: 0;
+  }
+
+  .switch-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+
+  .switch-label input {
+    position: absolute;
+    opacity: 0;
+  }
+
+  .switch-track {
+    position: relative;
+  }
+
+  .switch-track::after {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    border-radius: 50%;
+    content: "";
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(35, 25, 46, 0.22);
+    transition: 160ms ease;
+  }
+
+  .switch-label input:checked + .switch-track {
+    background: var(--violet-600);
+  }
+
+  .switch-label input:checked + .switch-track::after {
+    transform: translateX(19px);
+  }
+
+  .code-input {
+    max-width: 150px;
+    letter-spacing: 0.2em;
+    text-align: center;
+    font-size: 16.2px;
+    font-weight: 900;
+  }
+
+  /* Inquiry */
+  .inquiry-layout {
+    display: grid;
+  }
+
+  .inquiry-list {
+    display: grid;
+  }
+
+  .inquiry-card {
+    border: 1px solid var(--line);
+    background: #fff;
+  }
+
+  .inquiry-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .inquiry-card h4 {
+    margin: 10px 0 0;
+    color: var(--ink-900);
+  }
+
+  .inquiry-card p {
+    margin: 8px 0 0;
+    color: var(--ink-500);
+    font-weight: 620;
+    white-space: pre-wrap;
+  }
+
+  .inquiry-meta {
+    font-weight: 700;
+  }
+
+  .reply-box {
+    color: var(--success);
+    background: var(--success-bg);
+    font-weight: 650;
+    white-space: pre-wrap;
+  }
+
+  /* Empty / loaders / toast / modal */
+  .empty-state {
+    display: grid;
+    min-height: 260px;
+    align-content: center;
+    justify-items: center;
+    color: var(--ink-500);
+  }
+
+  .empty-icon {
+    font-weight: 900;
+  }
+
+  .portal-loader {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+  }
+
+  .loader-spinner {
+    width: 34px;
+    height: 34px;
+    border: 3px solid var(--violet-100);
+    border-top-color: var(--violet-600);
+    border-radius: 50%;
+    animation: portal-spin 0.75s linear infinite;
+  }
+
+  @keyframes portal-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loader-card strong {
+    margin-top: 15px;
+  }
+
+  .loader-card span:last-child {
+    margin-top: 5px;
+    color: var(--ink-400);
+    font-size: 9.9px;
+    font-weight: 650;
+  }
+
+  .toast-region {
+    position: fixed;
+    z-index: 140;
+    display: grid;
+    width: min(380px, calc(100vw - 40px));
+    pointer-events: none;
+  }
+
+  .toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    animation: toast-in 180ms ease-out;
+  }
+
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .toast-mark {
+    display: grid;
+    width: 27px;
+    height: 27px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 9px;
+    color: var(--success);
+    background: var(--success-bg);
+    font-size: 10.8px;
+    font-weight: 950;
+  }
+
+  .toast.error .toast-mark {
+    color: var(--danger);
+    background: var(--danger-bg);
+  }
+
+  .toast-copy strong {
+    display: block;
+    color: var(--ink-800);
+    font-size: 10.8px;
+  }
+
+  .toast-copy span {
+    display: block;
+    margin-top: 2px;
+    color: var(--ink-500);
+    font-size: 9px;
+    font-weight: 650;
+  }
+
+  .modal-root {
+    position: fixed;
+    z-index: 120;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    overflow-y: auto;
+    padding: 24px;
+    background: rgba(31, 21, 44, 0.48);
+    backdrop-filter: blur(8px);
+  }
+
+  .modal-card {
+    width: min(620px, 100%);
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    padding: 27px;
+    background: #fff;
+  }
+
+  .modal-card.modal-wide {
+    width: min(980px, 100%);
+  }
+
+  .modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 15px;
+  }
+
+  .modal-head h3 {
+    margin: 0;
+    letter-spacing: -0.035em;
+  }
+
+  .modal-head p {
+    margin: 6px 0 0;
+  }
+
+  .modal-close {
+    display: grid;
+    width: 37px;
+    height: 37px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 0;
+    border-radius: 11px;
+    color: var(--ink-500);
+    background: var(--surface-soft);
+    cursor: pointer;
+    font-size: 20.7px;
+  }
+
+  .modal-body {
+    margin-top: 22px;
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    margin-top: 25px;
+    border-top: 1px solid var(--line);
+    padding-top: 19px;
+  }
+
+  .assignment-preview {
+    display: grid;
+    gap: 18px;
+  }
+
+  .assignment-meal h4 {
+    margin: 0 0 10px;
+    color: var(--ink-800);
+  }
+
+  .assignment-tables {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .assignment-table {
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 11px;
+    background: var(--surface-soft);
+  }
+
+  .assignment-table strong {
+    display: block;
+    color: var(--violet-700);
+    font-size: 9px;
+  }
+
+  .assignment-table span {
+    display: block;
+    margin-top: 5px;
+    color: var(--ink-600);
+    font-size: 9px;
+    font-weight: 650;
+    line-height: 1.55;
+  }
+
+  @media (max-width: 1180px) {
+
+    .photo-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .meal-slot-grid {
+      grid-template-columns: repeat(3, minmax(110px, 1fr));
+    }
+  }
+
+  @media (max-width: 960px) {
+    .login-view {
+      grid-template-columns: 1fr;
+    }
+
+    .login-brand-panel {
+      display: none;
+    }
+
+    .login-form-panel {
+      min-height: 100vh;
+    }
+
+    .login-mobile-brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .login-mobile-brand > span:last-child {
+      display: grid;
+    }
+
+    .login-mobile-brand small {
+      color: var(--ink-400);
+      font-size: 9px;
+      font-weight: 700;
+    }
+
+    .sidebar {
+      transform: translateX(-104%);
+      transition: transform 200ms ease;
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    .sidebar-close,
+    .mobile-menu-button {
+      display: grid;
+      place-items: center;
+    }
+
+    .sidebar-backdrop {
+      position: fixed;
+      z-index: 35;
+      inset: 0;
+      display: block;
+      background: rgba(31, 21, 44, 0.35);
+      backdrop-filter: blur(3px);
+    }
+
+    .workspace-shell {
+      margin-left: 0;
+    }
+
+    .hero-status {
+      width: 100%;
+      justify-self: stretch;
+    }
+
+    .metric-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .form-grid-three {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 720px) {
+
+    .page-heading,
+    .course-detail-head,
+    .filter-toolbar {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .page-heading {
+      display: flex;
+    }
+
+    .page-heading-actions,
+    .course-detail-actions {
+      justify-content: flex-start;
+    }
+
+    .course-card-grid,
+    .form-grid,
+    .form-grid-three,
+    .operation-grid,
+    .upload-grid,
+    .date-input-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .form-field.span-2 {
+      grid-column: auto;
+    }
+
+    .choice-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .course-row {
+      grid-template-columns: 1fr;
+    }
+
+    .course-row-actions {
+      justify-content: flex-end;
+    }
+
+    .photo-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .setting-row {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .meal-slot-grid,
+    .assignment-tables {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .modal-root {
+      padding: 12px;
+    }
+
+    .modal-card {
+      max-height: calc(100vh - 24px);
+      padding: 21px;
+    }
+  }
+
+  /* =========================================
+   * 로그인 첫 화면 확대 조정
+   * - 왼쪽 42% / 로그인 58%
+   * - 왼쪽 정보 간격 및 기능 칩 확대
+   * - 오른쪽 로그인 UI 전반 확대
+   * ========================================= */
+
+  .form-error {
+    white-space: pre-line;
+  }
+
+  @media (min-width: 961px) {
+    /* 왼쪽 42%, 로그인 영역 58% */
+    .login-view {
+      grid-template-columns:
+        minmax(0, 42fr)
+        minmax(0, 58fr);
+    }
+
+    /* 왼쪽 보라색 영역 */
+
+    /* V / KVCA / V-Up Operations 약 120% 확대 */
+    .login-brand-panel .brand-lockup {
+      gap: 15px;
+    }
+
+    .login-brand-panel .brand-mark {
+      width: 52px;
+      height: 52px;
+      border-radius: 17px;
+      font-size: 23.4px;
+    }
+
+    .login-brand-panel .brand-lockup strong {
+      font-size: 20.7px;
+    }
+
+    .login-brand-panel .brand-lockup small {
+      margin-top: 6px;
+      font-size: 11.7px;
+      letter-spacing: 0.09em;
+    }
+
+    /* EDUCATION OPERATIONS PLATFORM부터
+       기능 안내 칩까지의 세로 간격 확대 */
+
+    .login-brand-panel h1 {
+      letter-spacing: -0.04em;
+    }
+
+    /* 관리자별 전용 공간 등 칩과 글씨 약 150% 확대 */
+    .login-feature-strip span {
+      border-width: 1.5px;
+      line-height: 1.4;
+    }
+
+    /* 왼쪽 최하단 협회명 확대 및 흰색 처리 */
+    .login-brand-footer {
+      color: #ffffff;
+      letter-spacing: 0.12em;
+      opacity: 1;
+    }
+
+    /* 오른쪽 로그인 영역 */
+
+    .login-card h2 {
+      line-height: 1.18;
+    }
+
+    .field-label {
+      font-size: 16.2px;
+    }
+
+    .field-control input {
+      border-radius: 18px;
+      padding:
+        0
+        92px
+        0
+        75px;
+    }
+
+    .field-leading {
+      left: 18px;
+      width: 41px;
+      height: 41px;
+      border-radius: 12px;
+    }
+
+    .password-toggle {
+      right: 14px;
+    }
+
+    .form-error {
+      margin: 7px 0 22px;
+      border-radius: 15px;
+      padding: 16px 18px;
+      font-size: 14.4px;
+      line-height: 1.75;
+    }
+
+    .btn-login {
+      padding: 0 27px;
+    }
+  }
+
+  /* =========================================
+   * 로그인 이후 관리자 화면 확대 조정
+   * 모든 일반 관리자 및 총괄 관리자 공통 적용
+   * ========================================= */
+
+  /* 중앙의 새로운 강의 개설 버튼 약 120% 확대 */
+  .hero-copy .hero-create-button {
+    gap: 10px;
+    border-radius: 16px;
+    padding: 0 23px;
+    font-weight: 900;
+  }
+
+  /* 오른쪽 개설 강좌 카드를 실제 버튼으로 사용 */
+  .hero-status-button {
+    cursor: pointer;
+    transition:
+      transform 160ms ease,
+      border-color 160ms ease,
+      background 160ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .hero-status-button:hover {
+    border-color: rgba(255, 255, 255, 0.42);
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 16px 34px rgba(37, 15, 80, 0.18);
+    transform: translateY(-3px);
+  }
+
+  .hero-status-button:active {
+    transform: translateY(-1px);
+  }
+
+  .hero-status-button:focus-visible {
+    outline: 3px solid rgba(255, 255, 255, 0.72);
+    outline-offset: 4px;
+  }
+
+  @media (min-width: 961px) {
+    /* 기존 278px의 약 130% */
+
+    /* 사이드바 상단 로고 확대 */
+    .sidebar .sidebar-brand {
+      gap: 15px;
+    }
+
+    /* 메뉴 전체 여백 확대 */
+
+    /* 메뉴 선택 버튼과 글씨 확대 */
+
+    .nav-item.active::before {
+      width: 5px;
+    }
+
+    /* 사이드바 하단 계정 정보 확대 */
+
+  }
+
+  /* ================================================
+   * 관리자 화면 통합 보정
+   * ================================================ */
+
+  .nav-item > span:not(.nav-icon):not(.nav-badge) {
+    font-size: 0.99em;
+  }
+
+  .sidebar-brand {
+    border-radius: 14px;
+    padding: 6px;
+    transition: background 150ms ease, transform 150ms ease;
+  }
+
+  .sidebar-brand:hover {
+    background: var(--violet-50);
+    transform: translateY(-1px);
+  }
+
+  .sidebar-brand:focus-visible {
+    outline: 3px solid rgba(124, 77, 255, 0.23);
+    outline-offset: 3px;
+  }
+
+  .topbar-date {
+    min-width: 220px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    text-align: right;
+  }
+
+  .content-root {
+    margin: 0;
+  }
+
+  .page-heading-copy p {
+    margin-top: 6px;
+  }
+
+  .hero-status-button {
+    align-self: stretch;
+    justify-self: end;
+    margin-top: 31px;
+    appearance: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    font: inherit;
+    text-align: left;
+  }
+
+  .hero-status-button .hero-status-value {
+    margin-top: 18px;
+  }
+
+  .hero-status-link {
+    display: block;
+    margin-top: 20px;
+    color: rgba(255, 255, 255, 0.88);
+    font-weight: 800;
+  }
+
+  .dashboard-profile-callout {
+    gap: 24px;
+  }
+
+  .dashboard-profile-copy {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 12px;
+  }
+
+  .dashboard-profile-copy strong,
+  .dashboard-profile-copy > span {
+    font-size: inherit;
+  }
+
+  .dashboard-profile-action {
+    flex: 0 0 auto;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  .dashboard-columns,
+  .course-card-grid {
+    gap: 12px;
+  }
+
+  .form-actions {
+    margin-top: 20px;
+    padding-top: 18px;
+  }
+
+  .bulk-action-bar {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .bulk-action-bar > span {
+    display: grid;
+    gap: 3px;
+  }
+
+  .bulk-action-bar small {
+    font-weight: 650;
+  }
+
+  .course-card-head-left {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .course-select-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--line);
+    color: var(--ink-600);
+    background: #fff;
+    cursor: pointer;
+    font-weight: 850;
+  }
+
+  .course-select-check input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--violet-600);
+  }
+
+  .course-card.selection-mode {
+    border-color: var(--violet-200);
+  }
+
+  .selection-help {
+    color: var(--ink-400);
+    font-weight: 750;
+  }
+
+  .trash-retention-notice {
+    align-items: center;
+  }
+
+  .trash-course-card {
+    border-color: #eadde0;
+  }
+
+  /* 새 강의 개설 단계형 흐름 */
+  .course-wizard {
+    overflow: hidden;
+  }
+
+  .course-wizard-progress {
+    position: relative;
+    display: grid;
+    margin: 0;
+    list-style: none;
+  }
+
+  .course-wizard-progress li {
+    position: relative;
+    z-index: 1;
+    justify-items: center;
+  }
+
+  .course-wizard-progress li:last-child::after {
+    display: none;
+  }
+
+  .course-wizard-progress li > span {
+    display: grid;
+    place-items: center;
+    border: 2px solid var(--line-strong);
+    border-radius: 50%;
+    color: var(--ink-500);
+    background: #fff;
+  }
+
+  .course-wizard-progress li.active > span,
+  .course-wizard-progress li.completed > span {
+    border-color: var(--violet-600);
+    color: #fff;
+    background: var(--violet-600);
+    box-shadow: 0 7px 18px rgba(91, 53, 213, 0.24);
+  }
+
+  .course-wizard-step {
+    display: none;
+    border: 0;
+    padding: 0;
+    animation: wizardStepIn 180ms ease;
+  }
+
+  .course-wizard-step + .course-wizard-step {
+    margin-top: 0;
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .course-wizard-actions > div {
+    display: flex;
+    gap: 10px;
+  }
+
+  .lodging-schedule-note {
+    margin-top: 20px;
+    font-size: 12.6px;
+  }
+
+  @keyframes wizardStepIn {
+    from {
+      opacity: 0;
+      transform: translateY(7px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (max-width: 960px) {
+
+    .hero-status-button {
+      margin-top: 0;
+      align-self: auto;
+      justify-self: stretch;
+    }
+  }
+
+  @media (max-width: 720px) {
+
+    .dashboard-profile-callout,
+    .bulk-action-bar,
+    .course-wizard-actions {
+      flex-direction: column;
+    }
+
+    .dashboard-profile-action,
+    .bulk-action-bar .btn,
+    .course-wizard-actions > .btn {
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .course-wizard-actions > div {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  /* ================================================
+   * 기능 고도화: 빠른 상태 전환 · 입력 가독성 보정
+   * 기존 색상·카드·레이아웃 테마는 그대로 유지합니다.
+   * ================================================ */
+
+  .hero-copy h2 {
+    letter-spacing: -0.03em;
+  }
+
+  .hero-copy .hero-create-button {
+    width: min(660px, 100%);
+    justify-content: center;
+    padding-inline: 28px;
+  }
+
+  .hero-status-button .hero-status-value strong {
+    color: #f3be3e;
+    font-size: 52px;
+    text-shadow: 0 3px 14px rgba(48, 28, 10, 0.22);
+  }
+
+  .hero-status-link {
+    font-size: 16.4px;
+  }
+
+  .metric-label {
+    display: block;
+    max-width: calc(100% - 36px);
+    line-height: 1.25;
+  }
+
+  .dashboard-columns .panel-header {
+    align-items: center;
+  }
+
+  .dashboard-columns .panel-header .btn {
+    font-size: 13px;
+  }
+
+  .recent-course-table {
+    display: grid;
+  }
+
+  .recent-course-head,
+  .recent-course-row {
+    display: grid;
+    grid-template-columns: 92px minmax(240px, 1fr) minmax(150px, 0.55fr) minmax(130px, 0.45fr) 128px;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .recent-course-head {
+    padding: 0 18px 7px;
+  }
+
+  .recent-course-row {
+    border: 1px solid var(--line);
+    padding: 14px 18px;
+    background: #fff;
+  }
+
+  .recent-course-row > strong {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--ink-900);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .recent-course-row > span {
+    color: var(--ink-600);
+    font-size: 14px;
+  }
+
+  .recent-course-index {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    font-size: 17px !important;
+  }
+
+  .upcoming-course-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    border: 1px solid var(--violet-100);
+  }
+
+  .upcoming-course-card .course-date-tile {
+    grid-row: span 3;
+  }
+
+  .upcoming-course-card > strong {
+    color: var(--ink-900);
+  }
+
+  .upcoming-course-card > span:not(.course-date-tile) {
+    color: var(--ink-500);
+  }
+
+  .upcoming-course-card .btn {
+    grid-column: 1 / -1;
+  }
+
+  .profile-form-panel .panel-description,
+  .page-stack:has(#profileForm) .page-heading-copy p {
+    font-size: 14px;
+  }
+
+  .profile-form-field {
+    width: 100%;
+  }
+
+  .profile-form-field > label:first-child {
+    font-size: 24px;
+  }
+
+  .profile-form-field > input {
+    min-height: 72px;
+    border-radius: 17px;
+    padding: 0 22px;
+    font-size: 22px;
+  }
+
+  .profile-public-check {
+    display: flex !important;
+    align-items: flex-start;
+    gap: 11px;
+    margin-top: 12px;
+    color: var(--violet-700) !important;
+    font-size: 15px !important;
+    font-weight: 850 !important;
+    line-height: 1.5;
+    cursor: pointer;
+  }
+
+  .profile-public-check input {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+    margin: 0;
+    accent-color: var(--violet-600);
+  }
+
+  .field-error {
+    display: block;
+    color: var(--danger);
+    font-weight: 850;
+  }
+
+  .field-invalid {
+    border-color: var(--danger) !important;
+    background: #fff8f9 !important;
+    box-shadow: 0 0 0 4px rgba(220, 50, 77, 0.1) !important;
+  }
+
+  .profile-save-button {
+    justify-content: center;
+  }
+
+  .course-wizard-progress li {
+    min-width: 0;
+  }
+
+  .course-wizard-progress li > strong {
+    line-height: 1.2;
+  }
+
+  .date-korean-preview {
+    display: block;
+    color: var(--violet-700);
+    font-weight: 900;
+  }
+
+  .access-code-notice {
+    border: 2px solid var(--violet-300);
+    color: var(--violet-900);
+    background: linear-gradient(135deg, var(--violet-50), #fff);
+  }
+
+  .access-code-notice strong span {
+    display: inline-grid;
+    place-items: center;
+    color: #fff;
+    background: var(--violet-700);
+    letter-spacing: 0.12em;
+  }
+
+  .access-code-notice > span {
+    font-weight: 750;
+  }
+
+  .period-input-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+  }
+
+  .period-input-grid > label {
+    display: grid;
+    color: var(--ink-600);
+    font-weight: 850;
+  }
+
+  .period-input-grid.compact {
+    margin-top: 0;
+  }
+
+  .readonly-code {
+    color: var(--violet-800);
+    background: var(--violet-50) !important;
+    cursor: not-allowed;
+  }
+
+  .loader-card {
+    display: grid;
+    width: min(540px, calc(100vw - 36px));
+    justify-items: stretch;
+    gap: 9px;
+    text-align: left;
+  }
+
+  .loader-card #loaderTitle {
+    margin-top: 0;
+    font-size: 18px;
+  }
+
+  .loader-card #loaderMessage {
+    margin-top: 0;
+    color: var(--ink-500);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .loader-progress-track,
+  .inline-progress {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--violet-100);
+  }
+
+  .loader-card .loader-progress-track {
+    margin-top: 12px;
+  }
+
+  .loader-progress-bar,
+  .inline-progress > span {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 38%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--violet-700), var(--pink-500));
+    animation: horizontalProgress 1.35s ease-in-out infinite;
+  }
+
+  .inline-progress {
+    width: min(360px, 72%);
+    margin-bottom: 7px;
+  }
+
+  @keyframes horizontalProgress {
+    0% {
+      width: 12%;
+      transform: translateX(-25%);
+    }
+    55% {
+      width: 62%;
+    }
+    100% {
+      width: 24%;
+      transform: translateX(430%);
+    }
+  }
+
+  .toast.warning {
+    border-color: #f4c96b;
+    background: #fffaf0;
+  }
+
+  @media (max-width: 1220px) {
+
+    .recent-course-head {
+      display: none;
+    }
+
+    .recent-course-row {
+      grid-template-columns: 58px minmax(0, 1fr) auto;
+    }
+
+    .recent-course-row > span:nth-of-type(2),
+    .recent-course-row > span:nth-of-type(3) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 960px) {
+
+    .course-wizard-progress li::after {
+      display: none;
+    }
+  }
+
+  @media (max-width: 720px) {
+
+    .hero-copy .hero-create-button {
+      line-height: 1.35;
+    }
+
+    .recent-course-row {
+      grid-template-columns: 48px minmax(0, 1fr);
+    }
+
+    .recent-course-row .btn {
+      grid-column: 1 / -1;
+      width: 100%;
+    }
+
+    .profile-form-field > label:first-child {
+      font-size: 18px;
+    }
+
+    .profile-form-field > input {
+      min-height: 60px;
+      font-size: 17px;
+    }
+
+    .period-input-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* ==================================================
+   * 2026 상용 운영 정돈 레이어
+   * 기존 브랜드와 흐름은 유지하고 밀도·대비·반응형 기준을 통일합니다.
+   * ================================================== */
+  :root {
+    --ink-500: #756e80;
+    --ink-400: #756e80;
+    --violet-500: #6d45e8;
+    --violet-600: #5b35d5;
+    --success: #0f6f50;
+    --warning: #8f4308;
+    --danger: #9b2941;
+    --info: #1f5d94;
+    --control-height: 48px;
+    --content-max: 1480px;
+  }
+
+  html { scroll-behavior: smooth; }
+  body { line-height: 1.55; }
+  ::placeholder { opacity: 1; }
+
+  .skip-link {
+    position: fixed;
+    z-index: 10000;
+    top: 10px;
+    left: 10px;
+    transform: translateY(-160%);
+    border-radius: 10px;
+    padding: 10px 14px;
+    background: #211044;
+    color: #fff;
+    font-weight: 800;
+  }
+  .skip-link:focus { transform: translateY(0); }
+
+  :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid #8b6cf1;
+    outline-offset: 3px;
+  }
+
+  .sidebar { width: 288px; }
+  .app-shell { padding-left: 288px; }
+  .topbar { padding: 0 32px; }
+  .topbar-title { font-size: 18px; }
+  .content-root {
+    overflow: visible;
+  }
+
+  .page-heading { gap: 18px; margin-bottom: 2px; }
+  .page-heading p { max-width: 760px; }
+
+  input, select, textarea,
+  .inline-input {
+    min-height: var(--control-height);
+    border-radius: 12px;
+    font-size: 16px;
+  }
+  textarea { min-height: 120px; }
+
+  .dashboard-hero {
+    gap: 28px;
+  }
+  .hero-copy h2 { max-width: 780px; font-size: clamp(32px, 3vw, 40px); line-height: 1.25; }
+  .hero-copy p { max-width: 720px; margin: 14px 0 20px; font-size: 15px; }
+  .hero-copy .hero-create-button { min-height: 50px; font-size: 14px; }
+  .hero-status-button { min-height: 154px; padding: 22px; }
+  .dashboard-profile-callout { min-height: 0; }
+
+  .dashboard-columns { align-items: stretch; }
+  .dashboard-columns > .panel,
+  .recent-course-table,
+  .upcoming-course-card {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .recent-course-head { position: static; }
+
+  .attention-center { border-left: 4px solid #6d45e8; }
+  .attention-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .attention-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 64px;
+    border: 1px solid var(--violet-100);
+    border-radius: 14px;
+    padding: 12px 14px;
+    background: #fbfaff;
+    color: var(--ink-900);
+    text-align: left;
+  }
+  .attention-item span { display: grid; min-width: 0; gap: 2px; }
+  .attention-item strong, .attention-item small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .attention-item small { color: var(--ink-500); }
+  .attention-item b { color: #5b35d5; }
+
+  .status-chip.status-blocked { background: #ffedf0; color: #9b2941; }
+
+  .course-wizard-actions { position: sticky; z-index: 4; bottom: 0; }
+
+  .bulk-action-bar { flex-wrap: wrap; gap: 12px; }
+  .select-all-check { display: inline-flex; align-items: center; gap: 7px; font-weight: 800; }
+  .select-all-check input { width: 20px; min-height: 20px; }
+  .trash-days { color: #8f4308 !important; font-weight: 800; }
+  .impact-list { display: grid; gap: 8px; margin: 16px 0; padding: 0; list-style: none; }
+  .impact-list li { display: grid; gap: 2px; border: 1px solid var(--ink-100); }
+  .impact-list li span { color: var(--ink-500); }
+  .load-more-row { display: flex; justify-content: center; padding-top: 18px; }
+
+  @media (max-width: 960px) {
+    .app-shell { padding-left: 0; }
+    .topbar { padding: 0 18px; }
+    .attention-list { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 720px) {
+    .topbar { gap: 10px; padding: 0 12px; }
+    .topbar-copy { min-width: 0; }
+    .topbar-title { overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+    .topbar-date { display: none; }
+    .topbar-create-button { padding-inline: 11px; }
+    .topbar-create-button span { font-size: 18px; }
+    .dashboard-hero { gap: 20px; }
+    .hero-copy h2 { font-size: 28px; line-height: 1.22; }
+    .hero-copy p { font-size: 14px; }
+    .hero-status-button { min-height: 122px; }
+    .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .page-heading { flex-direction: column; }
+    .course-wizard-progress li strong { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .course-tabs { overflow-x: auto; scroll-snap-type: x proximity; }
+    .course-tab { min-width: max-content; scroll-snap-align: start; }
+    .modal-card { max-height: calc(100dvh - 24px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  }
+
+  /* ==================================================
+   * 로그인 화면 밀도 조정
+   * - 로그인 버튼 1.3배 확대
+   * - ID / 비밀번호 입력 글씨 1.5배 확대
+   * - 좌·우 패널 여백을 기존의 80% 수준으로 축소
+   * - 로그인 버튼 하단 보조 버튼 3종 스타일
+   * 이 블록은 파일 최하단에 두어 앞선 로그인 규칙을 덮어씁니다.
+   * ================================================== */
+
+  /* 내용이 화면보다 길어져도 위쪽이 잘리지 않도록 하는 안전장치.
+     여유가 있을 때는 기존과 동일하게 세로 중앙 정렬로 보입니다. */
+  .login-form-panel {
+    align-items: safe center;
+    overflow-y: auto;
+  }
+
+  /* --- 여백 80% 축소 (공통) --- */
+
+  .login-eyebrow {
+    margin: clamp(67px, 9.6vh, 112px) 0 14px;
+  }
+
+  .login-brand-copy {
+    margin: 22px 0 0;
+  }
+
+  .field {
+    margin-bottom: 14px;
+  }
+
+  .login-security-note {
+    margin: 18px auto 0;
+  }
+
+  /* --- 입력 글씨 1.5배 (14px → 21px) --- */
+  .field-control input {
+    min-height: 62px;
+    font-size: 21px;
+  }
+
+  /* --- 로그인 버튼 1.3배 (58px → 75px) --- */
+
+  /* --- 보조 버튼 3종 --- */
+  .login-help-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .login-help-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    transition:
+      background 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease;
+  }
+
+  .login-help-button:hover {
+    border-color: var(--violet-300);
+  }
+
+  .login-help-button:focus-visible {
+    outline: 2px solid var(--violet-600);
+    outline-offset: 2px;
+  }
+
+  @media (min-width: 961px) {
+    /* 여백 80% 축소 (데스크톱) */
+
+    .login-eyebrow {
+      margin: clamp(90px, 11.2vh, 133px) 0 26px;
+    }
+
+    /* 축소된 여백에 맞춰 제목·본문 크기 조율 */
+    .login-card h2 {
+      font-size: 44px;
+    }
+
+    .field {
+      margin-bottom: 21px;
+    }
+
+    .field-label {
+      margin-bottom: 9px;
+    }
+
+    /* 입력 글씨 1.5배 (16.2px → 24.3px) */
+    .field-control input {
+      min-height: 76px;
+    }
+
+    /* 로그인 버튼 1.3배 (80px → 104px) */
+
+    .login-security-note {
+      margin: 24px auto 0;
+    }
+  }
+
+  /* 접속 제한 문의 카드의 조치 버튼 */
+  .lock-action-box .lock-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  @media (max-width: 960px) {
+    /* 브랜드 패널이 숨겨지는 구간. 이 블록이 파일 뒤쪽에 있으므로
+       앞선 max-width:960px 규칙의 여백 값을 여기서 다시 80%로 맞춥니다. */
+
+    .login-mobile-brand {
+      margin-bottom: 48px;
+    }
+  }
+
+  @media (max-width: 420px) {
+    /* 좁은 화면에서는 보조 버튼을 2줄로 흘립니다. */
+    .login-help-actions {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .login-help-button:last-child {
+      grid-column: span 2;
+    }
+  }
+
+  /* ==================================================
+   * 운영 홈 레이아웃 정돈
+   * 이 블록은 파일 최하단에 두어 앞선 대시보드 규칙을 덮어씁니다.
+   * ================================================== */
+
+  /* (1) 본문 좌우 여백을 상단바(＋ 새 강의 버튼)와 정확히 맞춥니다.
+     기존에는 본문만 1480px로 폭이 제한되고 가운데 정렬되어,
+     상단바보다 왼쪽 여백이 크게 벌어져 보였습니다. */
+  .content-root {
+    width: 100%;
+    margin-inline: 0;
+  }
+
+  /* (2) 히어로 높이 1.5배(296px → 444px)와 줄 간격 확대 */
+
+  .dashboard-hero .hero-copy {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* (3) 버튼 크기는 유지하고 글씨만 120%(14px → 16.8px) */
+
+  /* (4) 보관중인 강좌 카드가 히어로 높이를 꽉 채우도록 */
+  .dashboard-hero .hero-status-button {
+    align-self: stretch;
+    min-height: 0;
+    margin-top: 0;
+    justify-content: space-between;
+  }
+
+  .dashboard-hero .hero-status-button .hero-status-value {
+    margin-top: 0;
+  }
+
+  /* 기존 52px에서 확대. 금색·그림자는 기존 규칙을 그대로 물려받습니다. */
+
+  /* '개의 강좌'(19.8px), 안내문(16.4px) 크기는 기존 값을 유지하고 간격만 조정합니다. */
+  .dashboard-hero .hero-status-link {
+    margin-top: 0;
+  }
+
+  /* (5) 프로필 안내 줄: 글씨 120%(14px → 16.8px), 박스 높이 약 90% */
+  .dashboard-profile-callout {
+    align-items: center;
+    line-height: 1.3;
+  }
+
+  /* 버튼 글씨도 120%(18.9px → 22.7px). 높이는 박스 축소에 맞춰 50px → 45px */
+
+  /* (6) 첫 화면에서 잘리지 않도록 하단 두 패널의 빈 상태를 압축합니다. */
+  .dashboard-columns .empty-state {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-content: center;
+    align-items: center;
+    justify-items: start;
+    gap: 4px 22px;
+  }
+
+  /* 아이콘을 오른쪽 열로 보냅니다(DOM 순서는 그대로 둡니다). */
+  .dashboard-columns .empty-state .empty-icon {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+
+  .dashboard-columns .empty-state h3 {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+  }
+
+  .dashboard-columns .empty-state p {
+    grid-column: 1;
+    grid-row: 2;
+    max-width: none;
+    margin: 6px 0 0;
+  }
+
+  /* 예정 교육 없음 안내: 문구는 한 줄, 글씨만 200% */
+  .dashboard-upcoming-empty {
+    align-items: center;
+    justify-content: center;
+    min-height: 96px;
+    font-size: 21.6px;
+    line-height: 1.4;
+    text-align: center;
+  }
+
+  @media (max-width: 960px) {
+    /* 좁은 화면에서는 히어로 확대를 되돌려 세로 스크롤을 아낍니다. */
+
+    .dashboard-hero .hero-status-button {
+      margin-top: 20px;
+    }
+
+    .dashboard-upcoming-empty {
+      min-height: 0;
+      font-size: 17px;
+    }
+  }
+
+  /* ==================================================
+   * 화면 통일 레이어
+   * --------------------------------------------------
+   * 앞선 보정 레이어들이 화면마다 따로 쌓이면서 같은 역할의 글씨가
+   * 9px ~ 34px까지 벌어져 있었습니다. 여기서 운영 홈 기준으로
+   * 하나의 타이포·간격 규칙을 세워 모든 화면에 동일하게 적용합니다.
+   *
+   *   페이지 제목 30px / 패널 제목 19px / 본문·입력 15px
+   *   보조 설명 13.5px / 메타·캡션 12.5px / 상태칩 11.5px
+   *   입력 높이 50px / 기본 버튼 46px / 패널 안쪽 여백 24px
+   *
+   * 새 화면을 추가할 때도 이 값을 재사용하세요.
+   * ================================================== */
+
+  :root {
+    --ui-text-lg: 19px;
+    --ui-text-md: 15px;
+    --ui-text-sm: 13.5px;
+    --ui-text-xs: 12.5px;
+    --ui-control-h: 50px;
+  }
+
+  /* ---------- 1. 페이지 헤더: 운영 홈 히어로의 축소판 ---------- */
+  .page-stack > .page-heading {
+    position: relative;
+    align-items: center;
+    gap: 24px;
+    overflow: hidden;
+  }
+
+  .page-stack > .page-heading::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 5px;
+    background: linear-gradient(180deg, var(--violet-600), var(--pink-500));
+  }
+
+  .page-stack > .page-heading .page-heading-copy p {
+    max-width: 720px;
+    line-height: 1.6;
+  }
+
+  .page-stack > .page-heading .page-heading-actions {
+    align-items: center;
+    flex: 0 0 auto;
+  }
+
+  .page-stack > .page-heading .page-heading-actions .btn {
+    min-height: 46px;
+    padding-inline: 20px;
+    font-size: 14px;
+  }
+
+  /* ---------- 2. 패널 공통 ---------- */
+  .panel-title {
+    line-height: 1.35;
+  }
+
+  /* ---------- 3. 입력 공통 ---------- */
+
+  .field-help {
+    margin-top: 6px;
+  }
+
+  .field-error {
+    margin-top: 6px;
+    font-size: var(--ui-text-xs);
+  }
+
+  /* ---------- 4. 관리자 기본 정보 ----------
+     기존에는 1단 세로 나열 + 72px 입력이라 6개 항목 중 4개만 보였습니다.
+     2단으로 바꾸고 입력을 표준 높이로 낮춰 한 화면에 모두 들어오게 합니다. */
+  .profile-form-panel .panel-header {
+    margin-bottom: 20px;
+  }
+
+  .profile-form-grid {
+    align-items: start;
+  }
+
+  .profile-form-panel .profile-form-field > input {
+    min-height: var(--ui-control-h);
+    border-radius: 13px;
+    padding: 0 16px;
+    font-size: var(--ui-text-md);
+  }
+
+  .profile-form-panel .profile-public-check {
+    margin-top: 9px;
+    font-size: var(--ui-text-xs) !important;
+    line-height: 1.45;
+  }
+
+  .profile-form-panel .profile-public-check input {
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+  }
+
+  /* 저장 버튼: 화면 전체 폭을 차지하던 것을 오른쪽 정렬 버튼으로 */
+
+  .profile-save-button {
+    gap: 10px;
+  }
+
+  /* ---------- 5. 새 강의 개설 위저드 ----------
+     라벨 29px · 입력 28px · 제목 34px까지 커져 한 단계가 여러 화면에
+     걸쳐 있었습니다. 공통 스케일로 낮추고 2단 배치로 바꿉니다. */
+
+  .course-wizard .section-heading h3 {
+    font-size: 21px;
+  }
+
+  .course-wizard .section-heading p {
+    margin-top: 6px;
+    font-size: var(--ui-text-sm);
+  }
+
+  .wizard-form-grid {
+    align-items: start;
+  }
+
+  .course-wizard .form-field > input,
+  .course-wizard .form-field > select,
+  .course-wizard .form-field > textarea {
+    border-radius: 13px;
+    font-size: var(--ui-text-md);
+  }
+
+  .course-wizard .form-field > textarea {
+    min-height: 110px;
+    padding: 14px 16px;
+  }
+
+  .course-wizard .field-help {
+    margin-top: 6px;
+  }
+
+  .manager-profile-mismatch {
+    margin-top: 16px;
+    font-size: var(--ui-text-sm);
+  }
+
+  /* 날짜 입력: 일차 수만큼 가로로 흐르게 */
+  .date-input-grid {
+    gap: 14px;
+  }
+
+  .date-korean-preview {
+    margin-top: 6px;
+    font-size: var(--ui-text-xs);
+  }
+
+  .course-wizard .meal-slot-grid {
+    grid-template-columns: repeat(var(--meal-day-count, 3), minmax(130px, 1fr));
+    gap: 12px;
+  }
+
+  .course-wizard .check-tile {
+    min-height: 56px;
+    border-radius: 13px;
+    padding: 12px 14px;
+  }
+
+  .course-wizard .check-tile span {
+    font-size: var(--ui-text-md);
+  }
+
+  .course-wizard .check-tile input {
+    width: 19px;
+    height: 19px;
+  }
+
+  .access-code-notice {
+    border-width: 1px;
+    border-radius: 16px;
+  }
+
+  .access-code-notice strong {
+    font-size: 17px;
+  }
+
+  .access-code-notice strong span {
+    min-width: 74px;
+    margin-left: 8px;
+    border-radius: 10px;
+    padding: 5px 10px;
+    font-size: 20px;
+  }
+
+  .access-code-notice > span {
+    font-size: var(--ui-text-sm);
+    line-height: 1.6;
+  }
+
+  .period-input-grid > label {
+    gap: 6px;
+    font-size: var(--ui-text-xs);
+  }
+
+  .course-wizard .period-input-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 900px) {
+    .course-wizard .choice-grid,
+    .wizard-form-grid,
+    .course-wizard .period-input-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* ---------- 6. 필터 · 검색 (강의 관리 / 과거 기록) ---------- */
+
+  .filter-tabs {
+    gap: 6px;
+  }
+
+  .search-box {
+    width: min(340px, 100%);
+  }
+
+  .search-box input {
+    min-height: 44px;
+    border-radius: 12px;
+    padding: 0 14px 0 40px;
+    font-size: var(--ui-text-sm);
+  }
+
+  .search-box::before {
+    top: 10px;
+    font-size: 17px;
+  }
+
+  /* ---------- 7. 강의 카드 (목록 · 과거 기록 · 휴지통) ----------
+     본문이 9~11px로 작아 읽기 어려웠던 부분을 공통 스케일로 올립니다. */
+  .course-card-grid {
+    gap: 16px;
+  }
+
+  .course-card,
+  .trash-course-card {
+    min-height: 0;
+    border-radius: 18px;
+    padding: 20px;
+  }
+
+  .course-card h3 {
+    line-height: 1.4;
+  }
+
+  .course-card-meta {
+    gap: 6px;
+    margin: 12px 0 18px;
+    line-height: 1.45;
+  }
+
+  .course-card-footer {
+    gap: 10px;
+  }
+
+  .course-card-footer .btn {
+    min-height: 40px;
+    font-size: var(--ui-text-xs);
+  }
+
+  .readiness-mini {
+    font-size: var(--ui-text-xs);
+    font-weight: 800;
+  }
+
+  .mini-progress {
+    width: 104px;
+  }
+
+  .status-chip {
+    min-height: 28px;
+  }
+
+  .course-select-check {
+    border-radius: 11px;
+    padding: 6px 10px;
+    font-size: var(--ui-text-xs);
+  }
+
+  .selection-help {
+    font-size: var(--ui-text-xs);
+  }
+
+  .trash-days {
+    font-size: var(--ui-text-sm);
+  }
+
+  /* ---------- 8. 일괄 선택 바 · 휴지통 안내 ---------- */
+
+  .bulk-action-bar .btn {
+    min-height: 44px;
+    font-size: var(--ui-text-sm);
+  }
+
+  .trash-retention-notice {
+    font-size: var(--ui-text-sm);
+  }
+
+  @media (max-width: 1180px) {
+    .course-card-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  /* ---------- 9. 문의 사항 · 문의사항 답변하기 ----------
+     본문이 9.9px, 작성자 정보가 8.1px로 사실상 읽히지 않던 부분입니다. */
+  .inquiry-layout {
+    grid-template-columns: minmax(340px, 0.44fr) minmax(0, 0.56fr);
+    gap: 20px;
+    align-items: start;
+  }
+
+  .inquiry-list {
+    gap: 12px;
+  }
+
+  .inquiry-card {
+    border-radius: 16px;
+    padding: 20px;
+  }
+
+  .inquiry-card h4 {
+    margin-top: 12px;
+    font-size: 16.5px;
+    line-height: 1.4;
+  }
+
+  .inquiry-card p {
+    margin-top: 8px;
+    font-size: var(--ui-text-sm);
+    line-height: 1.65;
+  }
+
+  .reply-box {
+    margin-top: 14px;
+    border-radius: 13px;
+    padding: 14px 16px;
+    font-size: var(--ui-text-sm);
+    line-height: 1.65;
+  }
+
+  .inquiry-card .replyForm textarea {
+    min-height: 110px;
+    font-size: var(--ui-text-md);
+  }
+
+  .inquiry-card .replyForm .btn {
+    min-height: 44px;
+    font-size: var(--ui-text-sm);
+  }
+
+  /* 접속 제한 조치 영역 */
+  .lock-action-box {
+    display: grid;
+    gap: 4px;
+    border-radius: 14px;
+    padding: 16px 18px;
+    font-size: var(--ui-text-sm);
+  }
+
+  .lock-action-box strong {
+    font-size: var(--ui-text-md);
+  }
+
+  .lock-action-box .lock-action-buttons .btn {
+    min-height: 44px;
+    padding-inline: 16px;
+    font-size: var(--ui-text-sm);
+  }
+
+  @media (max-width: 1080px) {
+    .inquiry-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* ---------- 10. 안내 박스 공통 ----------
+     제외 조건을 :where()로 감싼 이유:
+     :where()는 우선순위가 0이라, 이 규칙 전체가 클래스 1개(0,1,0)로 계산됩니다.
+     덕분에 뒤에 오는 개별 콜아웃 규칙이 순서만으로 이 값을 덮을 수 있습니다.
+     (:not()을 그대로 쓰면 0,4,0이 되어 뒤 규칙이 무시됩니다) */
+  .info-callout:where(:not(.dashboard-profile-callout, .dashboard-upcoming-empty, .lock-action-box)),
+  .warning-callout:where(:not(.dashboard-profile-callout, .dashboard-upcoming-empty, .lock-action-box)),
+  .success-callout:where(:not(.dashboard-profile-callout, .dashboard-upcoming-empty, .lock-action-box)) {
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: var(--ui-text-sm);
+    line-height: 1.6;
+  }
+
+  .impact-list li {
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: var(--ui-text-sm);
+  }
+
+  .impact-list li span {
+    font-size: var(--ui-text-xs);
+  }
+
+  /* ---------- 12. 만족도 설문조사 ----------
+     공통 스케일(--ui-text-*)을 그대로 사용합니다. */
+
+  /* 설문 종류 선택 */
+  .survey-type-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .survey-type-grid .choice-card {
+    min-height: 82px;
+    border-radius: 16px;
+    padding: 16px 18px;
+  }
+
+  .survey-type-grid .choice-card > span {
+    font-size: 15.5px;
+  }
+
+  .survey-type-grid .choice-card small {
+    margin-top: 5px;
+    font-size: var(--ui-text-xs);
+  }
+
+  /* 저장 위치 */
+  .folder-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid var(--violet-100);
+    border-radius: 14px;
+    padding: 14px 16px;
+    background: var(--violet-50);
+  }
+
+  .folder-preview-icon {
+    font-size: 19px;
+  }
+
+  .folder-preview-path {
+    color: var(--violet-800);
+    font-size: var(--ui-text-sm);
+    font-weight: 750;
+    word-break: break-all;
+  }
+
+  .folder-current {
+    display: grid;
+    gap: 4px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    margin-bottom: 14px;
+    padding: 12px 14px;
+    background: var(--surface-soft);
+    font-size: var(--ui-text-sm);
+  }
+
+  .folder-current strong {
+    color: var(--ink-600);
+    font-size: var(--ui-text-xs);
+  }
+
+  .folder-item-list {
+    display: grid;
+    gap: 6px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .folder-item {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: var(--ink-800);
+    background: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--ui-text-sm);
+    font-weight: 700;
+    text-align: left;
+    transition: 150ms ease;
+  }
+
+  .folder-item:hover {
+    border-color: var(--violet-300);
+    background: var(--violet-50);
+  }
+
+  /* 강의 목록 입력 표 */
+  .survey-lecture-block {
+    margin-top: 26px;
+    border-top: 1px solid var(--line);
+    padding-top: 22px;
+  }
+
+  .survey-lecture-inputs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .survey-lecture-add {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 14px;
+  }
+
+  .survey-lecture-add .field-help {
+    margin-top: 0;
+  }
+
+  .survey-lecture-table {
+    margin-top: 18px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .survey-lecture-table table,
+  .survey-status-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--ui-text-sm);
+  }
+
+  .survey-lecture-table th,
+  .survey-status-table th {
+    padding: 12px 14px;
+    color: var(--ink-600);
+    background: var(--surface-soft);
+    font-size: var(--ui-text-xs);
+    font-weight: 850;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .survey-lecture-table td,
+  .survey-status-table td {
+    border-top: 1px solid var(--line);
+    padding: 12px 14px;
+    vertical-align: middle;
+  }
+
+  .survey-lecture-count {
+    margin: 0;
+    border-top: 1px solid var(--line);
+    padding: 10px 14px;
+    color: var(--ink-500);
+    background: var(--surface-soft);
+    font-size: var(--ui-text-xs);
+    font-weight: 750;
+  }
+
+  /* 참여 현황 */
+  .survey-filter-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .survey-filter-right .inline-input {
+    min-height: 44px;
+    width: min(220px, 46vw);
+    font-size: var(--ui-text-sm);
+  }
+
+  .survey-total-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 7px 14px;
+    color: var(--violet-800);
+    background: var(--violet-100);
+    font-size: var(--ui-text-sm);
+    font-weight: 850;
+  }
+
+  .survey-status-table {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow-x: auto;
+  }
+
+  .survey-cell-title {
+    min-width: 260px;
+    color: var(--ink-900);
+    font-weight: 700;
+  }
+
+  .survey-count {
+    color: var(--violet-700);
+    font-size: 16px;
+  }
+
+  /* 응답 수를 아직 세는 중임을 알리는 표시 */
+  .survey-count-pending {
+    color: var(--ink-400);
+    font-size: var(--ui-text-xs);
+    font-weight: 750;
+  }
+
+  .survey-total-chip-loading {
+    color: var(--ink-600);
+    background: #efecf4;
+  }
+
+  .survey-cell-actions {
+    display: flex;
+    gap: 8px;
+    white-space: nowrap;
+  }
+
+  /* 결과 요약 */
+  .survey-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .survey-metric {
+    display: grid;
+    gap: 6px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+    background: var(--surface-soft);
+  }
+
+  .survey-metric span {
+    color: var(--ink-500);
+    font-size: var(--ui-text-xs);
+    font-weight: 800;
+  }
+
+  .survey-metric strong {
+    color: var(--ink-950);
+    font-size: 19px;
+    letter-spacing: -0.02em;
+  }
+
+  /* 문항 블록 */
+  .question-list {
+    display: grid;
+    gap: 16px;
+  }
+
+  .question-block {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 20px;
+    background: #fff;
+  }
+
+  .question-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .question-head h4 {
+    margin: 0;
+    color: var(--ink-900);
+    font-size: var(--ui-text-md);
+    line-height: 1.45;
+  }
+
+  .question-meta {
+    margin: 6px 0 10px;
+    color: var(--ink-500);
+    font-size: var(--ui-text-xs);
+    font-weight: 750;
+  }
+
+  .score-badge {
+    display: grid;
+    flex: 0 0 auto;
+    justify-items: end;
+    gap: 2px;
+    text-align: right;
+  }
+
+  .score-badge strong {
+    color: var(--violet-700);
+    font-size: 22px;
+    letter-spacing: -0.03em;
+  }
+
+  .score-badge small {
+    color: var(--ink-500);
+    font-size: 11.5px;
+    font-weight: 750;
+  }
+
+  /* 5단계 분포 막대 */
+  .scale-bar {
+    display: flex;
+    height: 14px;
+    border-radius: 999px;
+    margin-top: 10px;
+    overflow: hidden;
+    background: #eeebf2;
+  }
+
+  .scale-seg {
+    display: block;
+    height: 100%;
+    transition: width 240ms ease;
+  }
+
+  .scale-empty {
+    width: 100%;
+    background: repeating-linear-gradient(45deg, #f2eff6, #f2eff6 6px, #e9e4ef 6px, #e9e4ef 12px);
+  }
+
+  .scale-best { background: #4c2fb8; }
+  .scale-good { background: #7c5bea; }
+  .scale-mid { background: #b7a4f2; }
+  .scale-low { background: #f0a68a; }
+  .scale-worst { background: #d4566f; }
+
+  .scale-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-top: 10px;
+  }
+
+  .scale-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ink-600);
+    font-size: var(--ui-text-xs);
+    font-weight: 750;
+  }
+
+  .scale-legend-item i {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+  }
+
+  .question-rows {
+    display: grid;
+    gap: 16px;
+    margin-top: 14px;
+  }
+
+  .question-row-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .question-row-head strong {
+    color: var(--ink-800);
+    font-size: var(--ui-text-sm);
+  }
+
+  .question-row-head span {
+    color: var(--ink-500);
+    font-size: var(--ui-text-xs);
+    font-weight: 750;
+  }
+
+  /* 서술형 답변 */
+  .text-answer-group + .text-answer-group {
+    margin-top: 22px;
+  }
+
+  .text-answer-group h4 {
+    margin: 0 0 12px;
+    color: var(--ink-900);
+    font-size: var(--ui-text-md);
+    line-height: 1.45;
+  }
+
+  .text-answer-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .text-answer {
+    display: grid;
+    gap: 8px;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--violet-300);
+    border-radius: 12px;
+    margin: 0;
+    padding: 14px 16px;
+    color: var(--ink-800);
+    background: var(--surface-soft);
+    font-size: var(--ui-text-sm);
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+
+  .text-answer cite {
+    color: var(--ink-400);
+    font-size: 11.5px;
+    font-style: normal;
+    font-weight: 750;
+  }
+
+  /* 강사별 누적 */
+  .instructor-list {
+    display: grid;
+    gap: 16px;
+  }
+
+  .instructor-card {
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 20px;
+    background: #fff;
+  }
+
+  .instructor-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .instructor-head h4 {
+    margin: 0;
+    color: var(--ink-950);
+    font-size: 17px;
+  }
+
+  .instructor-head h4 small {
+    color: var(--ink-500);
+    font-size: var(--ui-text-xs);
+    font-weight: 750;
+  }
+
+  .instructor-rows {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .instructor-row {
+    display: grid;
+    gap: 4px;
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: var(--surface-soft);
+  }
+
+  .instructor-row span {
+    color: var(--ink-500);
+    font-size: var(--ui-text-xs);
+    font-weight: 780;
+  }
+
+  .instructor-row b {
+    color: var(--violet-700);
+    font-size: 17px;
+  }
+
+  .instructor-detail {
+    margin-top: 16px;
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+  }
+
+  .instructor-detail summary {
+    color: var(--violet-700);
+    cursor: pointer;
+    font-size: var(--ui-text-sm);
+    font-weight: 800;
+  }
+
+  .instructor-lectures {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .instructor-lecture {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: var(--ui-text-sm);
+  }
+
+  .instructor-lecture b {
+    color: var(--violet-700);
+  }
+
+  .instructor-lecture small {
+    color: var(--ink-500);
+    font-size: var(--ui-text-xs);
+    font-weight: 750;
+  }
+
+  @media (max-width: 1180px) {
+    .survey-summary-grid,
+    .survey-lecture-inputs,
+    .instructor-rows {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 720px) {
+    .survey-type-grid,
+    .survey-summary-grid,
+    .survey-lecture-inputs,
+    .instructor-rows {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .survey-filter-right {
+      width: 100%;
+    }
+
+    .survey-filter-right .inline-input {
+      width: 100%;
+    }
+
+    .question-head,
+    .instructor-head {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .score-badge {
+      justify-items: start;
+      text-align: left;
+    }
+  }
+
+  /* 설문 생성 단계형 화면 */
+  .survey-folder-actions {
+    display: flex;
+    margin-top: 16px;
+  }
+
+  .survey-step-hint {
+    color: var(--ink-500);
+    font-size: var(--ui-text-xs);
+    font-weight: 800;
+  }
+
+  #satisfactionCreateForm .course-wizard-actions {
+    justify-content: space-between;
+  }
+
+  #satisfactionCreateForm .course-wizard-step {
+    display: none;
+  }
+
+  #satisfactionCreateForm .course-wizard-step.active {
+    display: grid;
+  }
+
+  /* ==================================================
+   * 14. 운영 홈 비율 재조정 (모든 화면 공통 기준)
+   * ================================================== */
+
+  /* --- 사이드바 폭 불일치 해소 ---
+     --sidebar-width(960px 이상에서 360px)로 본문을 밀어내고 있었지만
+     실제 .sidebar 폭은 288px이어서, 그 차이 72px이 아무것도 없는
+     빈 띠로 남아 있었습니다. 두 값을 하나로 맞춥니다.
+     이 한 줄이 '사이드바와 내용물 사이 공백'의 실제 원인이었습니다. */
+
+  /* 상단바 높이 1.1배 (76 → 84px) */
+
+  /* 세로로 한 화면에 담기 위해 블록 간격을 조금 좁힙니다. */
+
+  /* --- 히어로 --- */
+
+  /* 인사말 묶음을 위아래로 벌려, 오른쪽 보관 강좌 카드의
+     위쪽 끝이 GOOD AFTERNOON에, 아래쪽 끝이 개설 버튼에 맞도록 합니다. */
+  .dashboard-hero .hero-copy {
+    justify-content: space-between;
+  }
+
+  .dashboard-hero .hero-copy .hero-eyebrow {
+    margin-bottom: 0;
+  }
+
+  .dashboard-hero .hero-copy h2 {
+    line-height: 1.34;
+  }
+
+  .dashboard-hero .hero-copy p {
+    margin: 14px 0 0;
+  }
+
+  /* 개설 버튼: 높이·글씨 105% (50 → 52.5px / 16.8 → 17.6px) */
+
+  .dashboard-hero .hero-status-button {
+    padding: 26px 28px;
+  }
+
+  .dashboard-hero .hero-status-button .hero-status-value strong {
+    font-size: 54px;
+  }
+
+  /* --- 프로필 안내 줄: 글씨는 유지, 박스 높이만 80% --- */
+
+  /* '지금 변경하기' 글씨 — 패널 제목(19px)의 90% */
+
+  /* --- 지표 카드: 라벨 120%, 높이 90%, 내용 세로 가운데 --- */
+  .metric-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .metric-value {
+    margin-top: 6px;
+  }
+
+  /* --- 하단 두 패널 ---
+     한 화면에 들어오게 납작하게 만들었더니 답답해져 높이를 140%로 되돌립니다.
+     아래 계산상 여전히 스크롤 없이 들어옵니다. */
+  .dashboard-columns > .panel.panel-pad {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dashboard-columns .empty-state {
+    flex: 1;
+    padding: 10px 6px;
+  }
+
+  /* 예정 교육 없음도 '최근 강의' 빈 상태와 같은 형식으로 통일했습니다. */
+  .dashboard-columns .empty-state h3 {
+    color: #4a2f18;                  /* 고동색 */
+  }
+
+  .dashboard-columns .empty-state p {
+    color: #7b5a3a;                  /* 갈색 */
+  }
+
+  /* '전체 보기 →'를 패널 제목과 같은 크기로 */
+  .dashboard-columns .panel-header .panel-header-link {
+    min-height: 0;
+    padding: 0;
+    color: var(--violet-700);
+    font-size: var(--ui-text-lg);
+    font-weight: 850;
+  }
+
+  /* 하단 패널이 바닥에 붙어 보여 아래 여백을 130%로 */
+
+  /* --- 히어로 오른쪽: 보관 강좌 + 최근 접속 관리자 --- */
+  .hero-side {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    align-self: stretch;
+    grid-template-rows: 45fr 55fr;
+    gap: 14px;
+    justify-self: end;
+  }
+
+  .dashboard-hero .hero-side .hero-status-button {
+    width: 100%;
+    min-height: 0;
+    margin-top: 0;
+  }
+
+  .dashboard-hero .hero-side .hero-status-value {
+    margin-top: 10px;
+  }
+
+  .hero-visits {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    color: #fff;
+    overflow: hidden;
+  }
+
+  .hero-visit-list {
+    display: grid;
+    align-content: start;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-y: auto;
+  }
+
+  .hero-visit-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .hero-visit-name em {
+    font-style: normal;
+  }
+
+  .hero-visit-at {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .hero-visit-empty {
+    margin: 0;
+    font-weight: 700;
+  }
+
+  /* ==================================================
+   * 15. 관리자 기본 정보
+   * ================================================== */
+
+  /* 비밀번호 변경 — 가로로 길게, 글씨는 상단바 로그아웃 버튼과 같은 크기 */
+  .profile-side-button {
+    border: 1px solid var(--violet-200);
+    border-radius: 14px;
+    padding: 0 22px;
+    color: var(--violet-800);
+    background: var(--violet-50);
+    font-weight: 900;
+  }
+
+  .profile-side-button:hover {
+    border-color: var(--violet-300);
+    background: var(--violet-100);
+  }
+
+  /* 패널 제목·설명, 입력 라벨 120% */
+  .profile-form-panel .panel-title {
+    font-size: 22.8px;
+  }
+
+  .profile-form-panel .panel-description {
+    font-size: 16.2px;
+  }
+
+  .profile-form-panel .profile-form-field > label:first-child {
+    font-size: 18px;
+  }
+
+  /* 프로필 화면은 스크롤 없이 한 화면에 들어와야 해서 세로 여백을 조입니다. */
+  .page-stack:has(#profileForm) > .page-heading {
+    padding-block: 20px;              /* 95% */
+  }
+
+  /* 공개 항목 한 줄 모음 — 높이 85% */
+  .profile-disclosure {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .profile-disclosure-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 22px;
+  }
+
+  .profile-disclosure-check {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .profile-disclosure-check input {
+    width: 19px;
+    height: 19px;
+    margin: 0;
+    accent-color: var(--violet-600);
+  }
+
+  /* 자동 입력 안내 — 글씨는 유지, 박스 높이만 95%로 */
+  .profile-auto-note {
+    align-items: flex-start;
+    font-size: 16.2px;
+  }
+
+  .profile-auto-note strong {
+    flex: 0 0 auto;
+    font-size: 16.2px;
+  }
+
+  /* 저장 버튼 — 안내 박스와 같은 폭, 높이 110%.
+     위 두 박스를 줄인 만큼 버튼도 위로 끌어올립니다. */
+  .profile-save-actions {
+    justify-content: stretch;
+  }
+
+  /* ==================================================
+   * 16. 새 강의 개설 위저드
+   * ================================================== */
+
+  /* 단계 표시줄: 좌우 여백을 페이지 제목과 맞춥니다(왼쪽 32px). */
+  .course-wizard-progress {
+    gap: 0;
+  }
+
+  /* 연결선이 글씨를 관통하던 문제 해결.
+     선을 절대 위치가 아닌 '남는 공간을 채우는 항목'으로 두어
+     각 단계의 글씨가 끝난 뒤부터 다음 번호 앞까지만 그려집니다. */
+  .course-wizard-progress li {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding-right: 0;
+    text-align: left;
+  }
+
+  .course-wizard-progress li > span {
+    flex: 0 0 auto;
+  }
+
+  .course-wizard-progress li > strong {
+    flex: 0 0 auto;
+  }
+
+  .course-wizard-progress li::after {
+    position: static;
+    z-index: auto;
+    top: auto;
+    left: auto;
+    width: auto;
+    height: 2px;
+    flex: 1 1 auto;
+    transform: none;
+    content: "";
+    background: var(--line);
+  }
+
+  .course-wizard-progress li.completed::after {
+    background: var(--violet-300);
+  }
+
+  /* 본문 좌우 여백도 단계 표시줄과 동일하게 맞춥니다. */
+
+  /* 단계 번호를 제목~설명 높이만큼 키웁니다. */
+  .course-wizard .section-heading {
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .course-wizard .section-number {
+    display: grid;
+    width: 58px;
+    height: auto;
+    min-height: 58px;
+    flex: 0 0 auto;
+    align-self: stretch;
+    place-items: center;
+    border-radius: 18px;
+    font-size: 22px;
+  }
+
+  /* 교육 종류 카드: 높이·글씨 110%, 좌우 끝을 본문 폭에 맞춤 */
+
+  .course-wizard .choice-card {
+    min-height: 82px;
+  }
+
+  .course-wizard .choice-card small {
+    line-height: 1.5;
+  }
+
+  /* 입력칸 110% */
+
+  .course-wizard .form-field > label,
+  .course-wizard .field-caption {
+    font-size: 16.5px;
+  }
+
+  .course-wizard .form-field > input,
+  .course-wizard .form-field > select,
+  .course-wizard .sub-manager-grid > input {
+    min-height: 55px;
+    border-radius: 13px;
+    padding: 0 16px;
+    font-size: 16.5px;
+  }
+
+  .course-wizard .field-help {
+    font-size: 13.5px;
+  }
+
+  /* 한 칸을 둘로 쪼갠 추가 담당자 입력 */
+  .sub-manager-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .sub-manager-grid > input {
+    width: 100%;
+    border: 1px solid var(--line-strong);
+    background: #fff;
+    font-weight: 700;
+  }
+
+  /* 라벨 옆 경고 문구 — 크기는 라벨과 같게 */
+  .field-inline-error {
+    margin-left: 8px;
+    color: var(--danger);
+    font-size: inherit;
+    font-style: normal;
+    font-weight: 800;
+  }
+
+  .meal-slot-invalid {
+    border-radius: 14px;
+    outline: 2px solid var(--danger);
+    outline-offset: 6px;
+  }
+
+  /* 하단 공백 축소 + 다음 단계 버튼 확대 */
+
+  .course-wizard-actions .btn {
+    padding-inline: 22px;
+  }
+
+  .course-wizard-actions #createNextButton,
+  .course-wizard-actions #createSubmitButton {
+    min-width: 240px;
+  }
+
+  /* ==================================================
+   * 17. 상단바 로그아웃 버튼
+   * --------------------------------------------------
+   * 사이드바 화살표를 없애고 상단바로 옮겼지만 전용 스타일이 없어,
+   * 옆의 '+ 새 강의'(52px·17.5px)보다 훨씬 작은 기본값(40px·13px)으로
+   * 그려지고 있었습니다. 같은 높이·글씨로 맞추고 색만 다르게 둡니다.
+   * ================================================== */
+  .topbar-logout-button {
+    border: 1px solid var(--line-strong);
+    color: var(--ink-700);
+    background: #fff;
+  }
+
+  .topbar-logout-button:hover {
+    border-color: #e7b0bd;
+    color: var(--danger);
+    background: var(--danger-bg);
+  }
+
+  @media (max-width: 960px) {
+    .topbar-logout-button {
+      padding-inline: 14px;
+    }
+  }
+
+  @media (max-width: 720px) {
+    /* 좁은 화면에서는 아이콘만 남기듯 최소 폭으로 */
+    .topbar-logout-button {
+      padding-inline: 11px;
+    }
+  }
+
+  /* '+ 새 강의'를 로그아웃 버튼과 같은 규격으로. 색만 보라/흰색 그대로 둡니다. */
+
+  @media (max-width: 960px) {
+    .topbar-create-button {
+      padding-inline: 14px;
+    }
+  }
+
+  /* --- 최근 접속 관리자 --- */
+  /* 제목 글씨를 '현재 보관중인 강좌'와 같은 크기로 */
+
+  .hero-visit-list li {
+    align-items: center;
+  }
+
+  .hero-visit-who {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .hero-visit-dot {
+    flex: 0 0 auto;
+    border-radius: 50%;
+  }
+
+  .hero-visit-dot.is-online {
+    background: #35d07f;
+    box-shadow: 0 0 0 3px rgba(53, 208, 127, 0.25);
+  }
+
+  .hero-visit-dot.is-offline {
+    background: #f2607a;
+    box-shadow: 0 0 0 3px rgba(242, 96, 122, 0.22);
+  }
+
+  .hero-visit-state {
+    flex: 0 0 auto;
+  }
+
+  /* ==================================================
+   * 18. 새 강의 개설 위저드 2차
+   * ================================================== */
+
+  /* 단계 글씨 130%(14.5 → 18.85px).
+     마지막 칸을 내용 크기로 두어 오른쪽에 남던 빈 공간을 없앱니다. */
+  .course-wizard-progress {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  }
+
+  .course-wizard-progress li:last-child {
+    padding-right: 0;
+  }
+
+  /* 현재 단계는 보라색으로 은은하게 깜빡입니다. */
+
+  @keyframes stepPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(109, 69, 232, 0.55); }
+    50% { box-shadow: 0 0 0 8px rgba(109, 69, 232, 0); }
+  }
+
+  /* 제목과 선택 카드 사이 간격 50%로 */
+
+  /* --- 2단계: 일수 + 형태 --- */
+  .schedule-basic-grid {
+    display: grid;
+    margin-top: 14px;
+  }
+
+  .day-count-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .day-count-control > input {
+    width: 120px;
+    min-height: 55px;
+    border: 1px solid var(--line-strong);
+    border-radius: 13px;
+    padding: 0 16px;
+    background: #fff;
+    font-size: 16.5px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .day-count-suffix {
+    color: var(--ink-700);
+    font-size: 16.5px;
+    font-weight: 850;
+  }
+
+  .lodging-type-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .lodging-type-tile {
+    min-height: 55px;
+  }
+
+  /* --- 한글 날짜 입력 --- */
+  .date-input-grid {
+    grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+  }
+
+  .kdate {
+    border: 1px solid var(--line-strong);
+    border-radius: 13px;
+    padding: 0 12px;
+    background: #fff;
+  }
+
+  .kdate-part {
+    -moz-appearance: textfield;
+  }
+
+  .kdate-part::-webkit-outer-spin-button,
+  .kdate-part::-webkit-inner-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+  }
+
+  .kdate-part:focus {
+    outline: 0;
+    border-radius: 8px;
+    background: var(--violet-50);
+  }
+
+  /* 달력 아이콘을 누르면 기본 날짜 선택기가 열립니다. */
+  .kdate-picker {
+    font-size: 17px;
+  }
+
+  .kdate-picker input {
+    position: absolute;
+    inset: 0;
+    min-height: 0;
+    border: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  /* --- 3단계 --- */
+  .section-heading-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .meal-skip-check {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--violet-200);
+    border-radius: 14px;
+    padding: 12px 16px;
+    color: var(--violet-800);
+    background: var(--violet-50);
+    cursor: pointer;
+    font-size: 14.5px;
+    font-weight: 850;
+    line-height: 1.4;
+  }
+
+  .meal-skip-check input {
+    width: 19px;
+    height: 19px;
+    flex: 0 0 auto;
+    margin: 0;
+    accent-color: var(--violet-600);
+  }
+
+  .meal-slot-grid {
+    margin-top: 16px;
+  }
+
+  /* 타일 높이 160%, 글씨 110% */
+  .course-wizard .check-tile.meal-tile {
+    min-height: 90px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .course-wizard .check-tile.meal-tile span {
+    display: grid;
+    gap: 2px;
+    font-size: 16.5px;
+    line-height: 1.3;
+  }
+
+  .course-wizard .check-tile.meal-tile small {
+    color: var(--ink-500);
+    font-size: 13px;
+    font-weight: 750;
+  }
+
+  .meal-slot-disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  /* --- 4단계 --- */
+  .access-code-notice {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
+    margin-bottom: 12px;
+    padding: 20px 22px;
+    font-size: 16px;
+    line-height: 1.75;
+  }
+
+  .access-code-notice b {
+    color: var(--violet-700);
+    font-size: inherit;
+    font-weight: 950;
+  }
+
+  .access-code-sub {
+    color: var(--ink-600);
+    font-size: 13.8px;
+    font-weight: 700;
+    line-height: 1.65;
+  }
+
+  /* 리멤버 링크는 한 줄을 혼자 씁니다. */
+  .remember-field {
+    margin-bottom: 20px;
+  }
+
+  .remember-field > input {
+    width: 100%;
+    min-height: 55px;
+    border: 1px solid var(--line-strong);
+    border-radius: 13px;
+    padding: 0 16px;
+    background: #fff;
+    font-size: 16.5px;
+    font-weight: 700;
+  }
+
+  .period-question {
+    display: grid;
+    gap: 6px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 20px;
+    background: var(--surface-soft);
+  }
+
+  .period-question + .period-question {
+    margin-top: 14px;
+  }
+
+  .period-question > strong {
+    color: var(--ink-950);
+    font-size: 16.5px;
+  }
+
+  .period-question > span {
+    color: var(--ink-600);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.6;
+  }
+
+  .period-question .period-input-grid {
+    margin-top: 10px;
+  }
+
+  @media (max-width: 900px) {
+    .schedule-basic-grid,
+    .lodging-type-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .section-heading-row {
+      align-items: stretch;
+      flex-direction: column;
+    }
+  }
+
+  /* ==================================================
+   * 19. 교육생 정보 탭
+   * ================================================== */
+
+  .roster-metric span {
+    color: var(--ink-500);
+    font-size: var(--ui-text-xs);
+    font-weight: 800;
+  }
+
+  .roster-metric strong {
+    color: var(--ink-950);
+    font-size: 20px;
+    letter-spacing: -0.02em;
+  }
+
+  .roster-progress > span {
+    transition: width 260ms ease;
+  }
+
+  .roster-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .roster-table th {
+    background: var(--surface-soft);
+    text-align: left;
+  }
+
+  .roster-table td {
+    border-top: 1px solid var(--line);
+    vertical-align: middle;
+  }
+
+  /* 룸메이트 변경 요청이 걸린 사람은 눈에 띄게 */
+  .roster-row-flagged {
+    background: #fff8e8;
+  }
+
+  .roster-name {
+    color: var(--ink-900);
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .roster-name em {
+    display: inline-block;
+    border-radius: 999px;
+    margin-left: 7px;
+    padding: 2px 8px;
+    color: #8f4308;
+    background: #ffeccc;
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 850;
+  }
+
+  .roster-input {
+    width: 100%;
+    min-width: 110px;
+    border: 1px solid var(--line);
+    padding: 0 10px;
+    background: #fff;
+    font-weight: 700;
+  }
+
+  .roster-input:focus {
+    border-color: var(--violet-600);
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(109, 69, 232, 0.12);
+  }
+
+  .roster-room {
+    min-width: 84px;
+    text-align: center;
+  }
+
+  /* 룸메이트 요청 목록 */
+  .roommate-request-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .roommate-request {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+    background: #fff;
+  }
+
+  .roommate-request-main {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+
+  .roommate-request-main strong {
+    color: var(--ink-900);
+    font-size: var(--ui-text-md);
+  }
+
+  .roommate-reason {
+    color: var(--ink-600);
+    font-size: var(--ui-text-sm);
+  }
+
+  .roommate-request-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* 저장 전 검사 결과 */
+  .room-issue {
+    margin-top: 16px;
+  }
+
+  .room-issue h4 {
+    margin: 0 0 8px;
+    color: var(--ink-900);
+    font-size: var(--ui-text-md);
+  }
+
+  .room-issue ul {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding-left: 18px;
+    font-size: var(--ui-text-sm);
+  }
+
+  .room-issue p {
+    margin: 0;
+    color: var(--ink-700);
+    font-size: var(--ui-text-sm);
+    line-height: 1.7;
+  }
+
+  .reminder-days-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .reminder-days-control > input {
+    width: 92px;
+    text-align: center;
+  }
+
+  .reminder-days-control > span {
+    color: var(--ink-600);
+    font-size: var(--ui-text-sm);
+    font-weight: 800;
+  }
+
+  @media (max-width: 720px) {
+
+    .roommate-request {
+      align-items: stretch;
+      flex-direction: column;
+    }
+  }
+
+  /* ---------- 11. 좁은 화면 보정 ----------
+     위 페이지 헤더 규칙이 우선순위가 높아, 기존 모바일 세로 배치를
+     덮어쓰지 않도록 여기서 다시 지정합니다. */
+  /* ==================================================
+   * 13. 로그인 화면 2차 조정 · 본문 여백 축소
+   * ================================================== */
+
+  /* --- 모달이 로더를 가리던 문제 ---
+     .modal-root(z-index 120)가 .portal-loader(100)보다 위에 있어,
+     모달 안에서 서버를 호출하면 로딩 표시가 보이지 않았습니다. */
+  .portal-loader {
+    z-index: 200;
+  }
+
+  .btn-spinner {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: btnSpin 0.7s linear infinite;
+  }
+
+  .btn-secondary .btn-spinner,
+  .btn-soft .btn-spinner {
+    border-color: rgba(91, 53, 213, 0.25);
+    border-top-color: var(--violet-700);
+  }
+
+  @keyframes btnSpin {
+    to { transform: rotate(360deg); }
+  }
+
+  .modal-form-busy {
+    opacity: 0.75;
+    pointer-events: none;
+  }
+
+  .modal-form-busy button[type="submit"] {
+    pointer-events: auto;
+  }
+
+  /* --- 로그인 브랜드 패널 --- */
+  /* (3) 로고는 위에 두고, 안내문~기능 칩 덩어리를 세로 가운데로 모읍니다. */
+  .login-brand-content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .login-brand-content .brand-lockup {
+    flex: 0 0 auto;
+  }
+
+  .login-eyebrow {
+    margin-top: auto;
+  }
+
+  .login-feature-strip {
+    margin-bottom: auto;
+  }
+
+  /* (2) 환영 문구 110% */
+
+  /* --- 로그인 입력/버튼 --- */
+  /* 입력칸 안내 글씨를 한 번 더 축소(0.9em → 0.81em)하고 세로 가운데로 정렬합니다.
+     input은 padding-block이 남아 있으면 글씨가 위로 치우쳐 보입니다. */
+  .field-control input {
+    padding-block: 0;
+    line-height: normal;
+  }
+
+  .field-control input::placeholder {
+    font-size: 0.81em;
+    line-height: normal;
+  }
+
+  .field-leading {
+    font-size: 9.9px;
+  }
+
+  @media (min-width: 961px) {
+
+    .login-eyebrow {
+      margin-top: auto;
+    }
+
+    .field-leading {
+      font-size: 12.9px;
+    }
+
+    /* '보기' 버튼 130% (62×46 / 13.5px → 81×60 / 17.6px).
+       버튼이 커진 만큼 입력칸 오른쪽 여백도 함께 넓혀 글씨와 겹치지 않게 합니다. */
+    .password-toggle {
+      min-width: 81px;
+      height: 60px;
+      border-radius: 14px;
+      font-size: 17.6px;
+    }
+
+    .field-control input {
+      padding-right: 110px;
+    }
+
+    /* (5) 로그인 버튼 높이를 입력칸과 동일하게(104px → 76px). 글씨 크기는 유지 */
+
+    /* 보조 버튼과의 간격 (14 → 17 → 20.4px) */
+
+    /* 실제로 입력한 글씨 90% (24.3px → 21.9px).
+       안내 글씨는 지금 크기를 유지해야 하므로 배율을 0.81em → 0.9em으로 되돌립니다.
+       (21.9 × 0.9 ≈ 19.7px = 기존 24.3 × 0.81 과 동일) */
+    .field-control input {
+      font-size: 21.9px;
+    }
+
+    .field-control input::placeholder {
+      font-size: 0.9em;
+    }
+
+    /* 하단 안내문 글씨·간격 120% (14.2 → 17px / 25.2 → 30.2px) */
+
+    /* 로그인 버튼: 높이 90%(76 → 68.4px), 글씨 95%(21 → 19.95px).
+       화살표는 원래 크기를 유지해야 해서 마지막 span만 따로 지정합니다. */
+
+    .btn-login > span:last-child {
+      font-size: 21px;
+    }
+  }
+
+  /* --- 계정 도움말 모달 ---
+     팝업 폭을 150%로 키우고(620px → 930px), 그에 맞춰 안쪽 여백과 제목도 함께 키웁니다. */
+  .modal-card.login-help-modal {
+    width: min(930px, 100%);
+    border-radius: 28px;
+    padding: 34px 38px;
+  }
+
+  /* 팝업 안 글씨를 일괄 110%로 키우고, 그만큼 버튼 줄을 아래로 내립니다. */
+  .modal-card.login-help-modal .modal-head h3 {
+    font-size: 28.6px;
+  }
+
+  .modal-card.login-help-modal .modal-head p {
+    margin-top: 8px;
+  }
+
+  .modal-card.login-help-modal .modal-body {
+    margin-top: 28px;
+  }
+
+  .modal-card.login-help-modal .form-field > label {
+    font-size: 16.5px;
+  }
+
+  .modal-card.login-help-modal .field-help {
+    margin-top: 7px;
+  }
+
+  /* 넓어진 폭을 살려 입력칸을 2단으로 배치합니다. */
+  .modal-card.login-help-modal .modal-body > .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 22px;
+  }
+
+  .modal-card.login-help-modal .form-field > input {
+    min-height: 55px;
+    font-size: 16.5px;
+  }
+
+  /* 버튼 줄을 아래로 내려 본문과 여유를 둡니다. */
+  .modal-card.login-help-modal .modal-actions {
+    margin-top: 34px;
+    gap: 12px;
+  }
+
+  .modal-card.login-help-modal .modal-actions .btn {
+    min-height: 55px;
+    padding-inline: 26px;
+    font-size: 16.5px;
+  }
+
+  .login-help-note {
+    display: grid;
+    gap: 6px;
+    margin-top: 22px;
+    font-size: 16px;
+    line-height: 1.7;
+  }
+
+  .login-help-note strong {
+    font-size: 17.6px;
+  }
+
+  /* (7) '주의' 한 줄 안내 — 세로 여백 70% */
+  .login-help-note-compact {
+    align-items: center;
+    padding-block: 10px;
+    line-height: 1.5;
+  }
+
+  .login-help-note-compact strong {
+    color: var(--danger);
+  }
+
+  /* 결과 박스 — 성공(초록) / 실패(빨강) 모두 팝업 안에서 보여줍니다. */
+  .login-help-result {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    border-radius: 14px;
+    margin-top: 20px;
+    padding: 11px 16px;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.5;
+    white-space: pre-line;
+  }
+
+  .danger-callout {
+    border: 1px solid #f0b4bf;
+    color: var(--danger);
+    background: var(--danger-bg);
+  }
+
+  /* 오른쪽에 '보기' 버튼이 붙은 비밀번호 입력칸 */
+  .password-field-control {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .password-field-control > input {
+    width: 100%;
+    padding-right: 74px;
+  }
+
+  .password-peek {
+    position: absolute;
+    right: 8px;
+    min-width: 58px;
+    height: 38px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--ink-600);
+    background: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 800;
+  }
+
+  .password-peek:hover {
+    border-color: var(--violet-300);
+    color: var(--violet-700);
+    background: var(--violet-50);
+  }
+
+  .password-peek.active {
+    border-color: var(--violet-300);
+    color: var(--violet-800);
+    background: var(--violet-100);
+  }
+
+  /* 이 규칙이 .login-help-result보다 우선순위가 높으므로 크기는 여기서 정합니다. */
+  .modal-card.login-help-modal .success-callout {
+    font-size: 17px;
+    line-height: 1.55;
+  }
+
+  @media (max-width: 720px) {
+    .modal-card.login-help-modal {
+      padding: 22px 20px;
+    }
+
+    .modal-card.login-help-modal .modal-body > .form-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* 새 비밀번호 입력칸만 연한 노란색으로 구분 */
+  .password-change-modal #preLoginNewPassword,
+  .password-change-modal #preLoginNewPasswordConfirm,
+  #newPassword,
+  #newPasswordConfirm {
+    border-color: #ecd9a0;
+    background: #fffdf0;
+  }
+
+  .password-change-modal #preLoginNewPassword:focus,
+  .password-change-modal #preLoginNewPasswordConfirm:focus,
+  #newPassword:focus,
+  #newPasswordConfirm:focus {
+    border-color: #d8b458;
+    box-shadow: 0 0 0 4px rgba(216, 180, 88, 0.16);
+  }
+
+  /* --- 본문 좌우 여백 ---
+     예시 이미지에서 사이드바 폭(288px)을 기준으로 환산해 측정한 결과,
+     사이드바~본문 간격과 오른쪽 여백이 모두 화면 폭의 약 1.35%였습니다.
+     고정 px로 두면 넓은 모니터에서는 붙어 보이고 좁은 화면에서는 답답하므로,
+     화면 폭에 비례하되 최소·최대만 잡아 둡니다.
+       1280px → 18px / 1920px → 27px / 2240px → 31px / 2560px 이상 → 34px
+     상단바와 같은 값을 써야 제목과 본문의 세로줄이 맞습니다. */
+  .topbar,
+  .content-root {
+    /* 사이드바 폭 불일치를 해소한 뒤 좌우가 너무 빡빡해져 140%로 넓혔습니다.
+       1280px → 24px / 1920px → 36px / 2240px → 43px / 2560px 이상 → 48px */
+    padding-inline: clamp(20px, 1.9vw, 48px);
+  }
+
+  @media (max-width: 960px) {
+    .topbar,
+    .content-root {
+      padding-inline: 14px;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .page-stack > .page-heading {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .page-stack > .page-heading .page-heading-actions {
+      justify-content: flex-start;
+    }
+
+    .course-card-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  /* ==================================================
+   * 20. 첫 화면(사이드바 · 상단바 · 운영 홈) 크기 보정
+   *  - 아래 값은 모두 "직전까지 실제로 적용되던 값 × 요청 배율"입니다.
+   *  - 기존 규칙은 그대로 두고, 마지막에 덮어써서 되돌리기 쉽게 했습니다.
+   * ================================================== */
+
+  /* --- (1) 사이드바 글씨 120% ---
+     글씨만 키우면 '새로운 강의 개설하기'가 두 줄로 접히므로,
+     사이드바 폭도 같은 비율만큼(288 → 330px) 넓혀 한 줄을 유지합니다. */
+  @media (min-width: 961px) {
+
+    /* 글씨를 키운 만큼 아이콘·배지와의 간격과 좌우 여백을 조금 줄여
+       '개설된 강의 관리하기'가 배지(숫자)와 함께 한 줄에 들어가게 합니다. */
+
+    .nav-item > span:not(.nav-icon):not(.nav-badge) {
+      white-space: nowrap;
+    }
+
+    .nav-item.active::before {
+      height: 34px;                    /* 29 × 1.17 */
+    }
+
+    /* --- (2) 사이드바 하단 프로필 120% --- */
+  }
+
+  /* --- (3) 상단바 높이 130% (84 → 109px) ---
+     .topbar는 sticky이므로 높이를 키우면 본문 전체가 그만큼 아래로 내려갑니다.
+     사이드바 상단(.sidebar-head)도 같은 변수를 쓰므로 로고 줄이 함께 맞습니다. */
+
+  .content-root {
+    min-height: calc(100vh - 109px);
+  }
+
+  .topbar-eyebrow {
+    margin-bottom: 2.5px;
+    font-size: 11.7px;                 /* 9 × 1.3 */
+  }
+
+  /* 버튼 크기는 그대로(110 × 52px), 글씨만 110% */
+
+  /* --- (4) 시계 + 네트워크 상태 --- */
+  .topbar-clock {
+    display: flex;
+    min-width: 220px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+  }
+
+  .topbar-clock .topbar-date {
+    min-width: 0;                      /* 폭은 .topbar-clock이 잡습니다 */
+  }
+
+  .topbar-network {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ink-500);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  .topbar-network-dot {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--ink-300, #b8b2c2);
+  }
+
+  .topbar-network.is-online {
+    color: #0f6f50;
+  }
+
+  .topbar-network.is-online .topbar-network-dot {
+    background: #17a673;
+    box-shadow: 0 0 0 3px rgba(23, 166, 115, 0.16);
+  }
+
+  .topbar-network.is-offline {
+    color: #b3261e;
+  }
+
+  .topbar-network.is-offline .topbar-network-dot {
+    background: #e5484d;
+    box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.16);
+  }
+
+  /* --- (5) 히어로(보라색 박스) 높이 120% --- */
+
+  /* GOOD AFTERNOON 130% */
+
+  .dashboard-hero .hero-copy h2 {
+    max-width: none;                   /* 780px 제한을 풀어 두 줄을 유지합니다 */     /* 넓은 화면 기준 1.07배, 좁은 화면은 두 줄 유지 */
+  }
+
+  /* --- (6) 프로필 안내(초록 박스) 높이·글씨 110%. 버튼은 그대로 --- */
+
+  /* --- (7) 지표 카드: 높이 2배 + 교육명 2줄 --- */
+
+  /* .metric-card::after(장식용 원)가 글씨를 덮지 않도록 위로 올립니다. */
+  .metric-title-list {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    align-content: end;
+    grid-template-columns: minmax(0, 1fr);
+    margin: auto 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .metric-title-item {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .metric-title-item > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .metric-title-dot {
+    width: 5px;
+    height: 5px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+  }
+
+  /* 표시할 교육이 없는 줄: 동그라미는 그대로, 글씨만 옅은 회색 */
+  .metric-title-item.is-empty {
+    font-weight: 700;
+  }
+
+  /* 남는 줄은 카드 높이를 지키기 위해 동그라미만 남깁니다. */
+  .metric-title-item.is-blank > span {
+    visibility: hidden;
+  }
+
+  /* --- (8) 하단 두 패널: 1:1 비율 + 높이·글씨 확대 --- */
+  .dashboard-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .recent-course-row {
+    min-height: 64px;                  /* 58 × 1.1 */
+    font-size: 15.4px;                 /* 14 × 1.1 */
+  }
+
+  /* 패널이 1:1이 되면서 폭이 좁아졌으므로, 운영 홈 안의 '최근 강의' 표만
+     열 너비를 다시 잡아 다섯 칸이 모두 보이도록 합니다.
+     강의명은 남는 폭을 모두 쓰고, 넘치면 말줄임으로 처리합니다. */
+
+  .dashboard-columns .recent-course-head > *,
+  .dashboard-columns .recent-course-row > * {
+    min-width: 0;
+  }
+
+  .dashboard-columns .recent-course-head {
+    padding: 0 14px 7px;
+  }
+
+  .dashboard-columns .recent-course-row > span {
+    overflow: hidden;
+    font-size: 13.4px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dashboard-columns .recent-course-row .btn {
+    min-width: 0;
+    padding: 0 10px;
+    font-size: 12.8px;
+    white-space: nowrap;
+  }
+
+  .upcoming-course-card > span:not(.course-date-tile) {
+    font-size: 14.3px;                 /* 13 × 1.1 */
+  }
+
+  .dashboard-columns .empty-state h3 {
+    font-size: 21.9px;                 /* 19.9 × 1.1 */
+  }
+
+  .dashboard-columns .empty-state p {
+    font-size: 15.4px;                 /* 14 × 1.1 */
+  }
+
+  /* --- (9) 좁은 화면 보정 --- */
+  @media (max-width: 960px) {
+
+    .content-root {
+      min-height: calc(100vh - 76px);
+    }
+
+    .topbar-clock {
+      min-width: 0;
+    }
+
+    .dashboard-columns {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 720px) {
+    .topbar-clock {
+      display: none;
+    }
+  }
+
+  /* --- (10) 운영 홈 세로 압축 ---
+     요청하신 크기(히어로 120%·지표 카드 2배·하단 패널 120%)를 유지한 채,
+     블록 사이 여백만 줄여 화면에 최대한 담습니다. */
+
+  .dashboard-profile-callout {
+    margin-top: 0;
+  }
+
+  .metric-grid {
+    gap: 9px;
+  }
+
+  /* ==================================================
+   * 21. 전 화면 공통 비율 조정 (글씨 110~120% · 세로 여백 압축)
+   *  - 원칙: 글씨는 키우되, 늘어난 높이만큼 여백을 줄여
+   *          어떤 탭에서도 세로 스크롤이 생기지 않게 합니다.
+   * ================================================== */
+
+  /* 늘어난 글씨를 흡수할 여백을 먼저 확보합니다. */
+
+  /* --- 페이지 제목(보라색 박스): 글씨 110%, 박스 높이는 그만큼만 --- */
+
+  /* --- 패널 제목/설명: 120% (운영 홈 하단 두 패널은 20번 규칙 유지) --- */
+
+  /* --- 입력칸 공통: 이름표·내용 글씨 120%, 높이 120%, 폭 90% --- */
+
+  /* --- 빈 상태 / 표 --- */
+
+  /* ==================================================
+   * 22. 관리자 기본 정보
+   * ================================================== */
+
+  /* (2) 비밀번호 변경: 높이 120%(46 → 55px), 글씨 130%(14 → 18.2px) */
+  .profile-side-button {
+    min-width: 200px;
+    min-height: 55px;
+    font-size: 18.2px;
+  }
+
+  /* (4) 입력칸 폭 90% — 이름표는 그대로 두고 칸만 줄입니다. */
+  .profile-form-grid {
+    grid-template-columns: repeat(2, 45%);
+    justify-content: space-between;
+  }
+
+  /* (5) 공개 정보 체크: 박스 높이 110%, 글씨·체크박스 130% */
+  .profile-disclosure {
+    margin-top: 12px;
+    gap: 8px 26px;
+  }
+
+  .profile-disclosure-check input[type="checkbox"] {                       /* 19 × 1.3 */
+    flex: 0 0 auto;
+  }
+
+  /* (6) 자동 입력 안내(파란 박스): 두 줄 안내에 맞춰 조금 더 높게 */
+  .profile-auto-note {
+    margin-top: 12px;
+    padding: 16px 20px;
+    line-height: 1.65;
+  }
+
+  /* (7) 내 기본 정보 변경하기: 높이 130%, 글씨 확대 + 은은한 반짝임 */
+  .profile-save-actions {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+
+  .profile-save-button {
+    position: relative;                  /* 55 × 1.3 */                   /* 16.5 × 1.27 */
+  }
+
+  .profile-save-button::after {
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 45%;
+    height: 100%;
+    background: linear-gradient(
+      100deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.34) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    pointer-events: none;
+  }
+
+  @keyframes profileSaveShine {
+    0% { left: -60%; }
+    55%, 100% { left: 130%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .profile-save-button::after { opacity: 0; }
+  }
+
+  /* ==================================================
+   * 23. 새로운 강의 개설하기 (위저드)
+   * ================================================== */
+
+  /* (1) 단계 글씨 확대 — 연결선과 좌우 여백을 줄여 한 줄을 유지합니다.
+     1680px 기준으로 네 단계가 줄바꿈 없이 들어가는 최대치입니다. */
+
+  .course-wizard-progress li::after {
+    min-width: 10px;
+    margin-inline: 8px;
+  }
+
+  /* (2) 단계 제목/설명 120% — 2·3·4단계에도 그대로 적용됩니다. */
+  .section-heading {
+    gap: 14px;
+  }
+
+  /* (3) V-Up / 그 외 교육 선택 카드
+     라벨의 안쪽 여백 때문에 실제 보이는 박스가 아래 입력칸보다 16px 좁았습니다.
+     여백을 안쪽 span으로 옮기고 열 간격을 입력칸과 같은 24px로 맞춰,
+     카드의 오른쪽 끝이 '기수'·'담당자 이름' 칸과 정확히 일치하게 합니다. */
+  .course-wizard .choice-grid {
+    grid-template-columns: repeat(2, 45%);
+    justify-content: space-between;
+    margin-top: 8px;
+    gap: 24px;
+  }
+
+  .course-wizard .choice-card {
+    padding: 0;
+  }
+
+  /* (4) 기수·담당자 입력칸: 이름표와 내용 120%, 높이 확대, 폭 90% */
+  .wizard-form-grid {
+    grid-template-columns: repeat(2, 45%);
+    justify-content: space-between;
+  }
+
+  /* (5) 다음 단계로 이동하기 */
+
+  /* ==================================================
+   * 24. 운영 홈 — 화면 높이에 맞춰 자동 축소 (스크롤 0)
+   *  - 크기를 고정 px가 아니라 화면 높이(vh)에 연동시켜,
+   *    노트북(짧은 화면)에서는 알아서 줄고
+   *    큰 모니터에서는 요청하신 원래 크기(히어로 480 / 지표 202 / 패널 264)까지
+   *    커지도록 했습니다. 어떤 높이에서도 세로 스크롤이 생기지 않습니다.
+   * ================================================== */
+
+  .page-stack {
+    gap: clamp(8px, 1.34vh, 17px);               /* 블록 사이 간격 130% */
+  }
+
+  /* --- 히어로(보라 박스) --- */
+
+  .dashboard-hero .hero-copy h2 {
+    margin-top: clamp(4px, 1vh, 14px);
+  }
+
+  .dashboard-hero .hero-copy p {
+    margin-top: clamp(5px, 1.2vh, 14px);
+    line-height: 1.55;
+  }
+
+  .dashboard-hero .hero-copy .hero-create-button {
+    margin-top: clamp(8px, 1.6vh, 18px);
+  }
+
+  .hero-visits {
+    gap: clamp(4px, 0.9vh, 10px);
+  }
+
+  /* --- 프로필 안내(초록 줄) --- */
+
+  .dashboard-profile-button-safe,
+  .dashboard-profile-action {
+    min-height: clamp(34px, 4.4vh, 45px);
+    font-size: clamp(14px, 2.15vh, 22.7px);
+  }
+
+  /* --- 지표 카드(교육명 2줄 유지) --- */
+  .metric-card {
+    gap: clamp(3px, 0.7vh, 8px);
+  }
+
+  .metric-title-item {
+    line-height: 1.3;
+  }
+
+  .metric-title-list {
+    gap: clamp(3px, 0.6vh, 6px);
+  }
+
+  /* --- 하단 두 패널 --- */
+
+  .dashboard-columns .panel-header {
+    margin-bottom: clamp(6px, 1.1vh, 16px);
+  }
+
+  .dashboard-columns .recent-course-head {
+    padding-bottom: clamp(2px, 0.6vh, 7px);
+  }
+
+  .recent-course-table {
+    gap: clamp(4px, 0.9vh, 10px);
+  }
+
+  .dashboard-columns .recent-course-row {
+    min-height: clamp(36px, 5vh, 64px);
+    font-size: clamp(12px, 1.45vh, 15.4px);
+  }
+
+  .upcoming-course-card {
+    gap: clamp(3px, 0.8vh, 10px) 15px;
+  }
+
+  .upcoming-course-card > strong {
+    font-size: clamp(14px, 1.75vh, 17.6px);
+  }
+
+  .upcoming-course-card .btn {
+    min-height: clamp(33px, 4.1vh, 48px);
+    margin-top: clamp(1px, 0.4vh, 6px);
+    font-size: clamp(12.5px, 1.5vh, 15.4px);
+  }
+
+  /* 좁은 화면(모바일·태블릿)에서는 원래대로 세로로 쌓고 스크롤을 허용합니다. */
+  /* ==================================================
+   * 25. 전체 비율 미세 조정
+   *  - (1) 본문 글씨·요소를 일괄 97%로 (zoom은 레이아웃까지 함께 줄여
+   *        글씨만 줄일 때 생기는 여백 불균형이 없습니다)
+   *  - (2) 가로로 너무 길던 블록을 4% 좁혀, 2:1 이던 가로세로 느낌을
+   *        1.9:1.1 쪽으로 옮깁니다.
+   * ================================================== */
+
+  /* 좌우 끝은 상단바의 제목·로그아웃 버튼과 정확히 맞춥니다.
+     (이전에 4% 좁히던 규칙은 요청에 따라 되돌렸습니다) */
+
+  /* 줄어든 배율만큼 세로 여유가 생기므로, 운영 홈 블록 높이를 조금 되돌립니다. */
+  .dashboard-hero {
+    min-height: clamp(250px, 34.2vh, 505px);
+  }
+
+  .metric-card {
+    min-height: clamp(116px, 15.85vh, 218px);
+  }
+
+  .dashboard-columns > .panel.panel-pad {
+    min-height: clamp(150px, 27.9vh, 320px);
+  }
+  /* 세로가 짧은 화면(노트북 등)에서 마지막 여백까지 짜냅니다. */
+  @media (min-width: 961px) and (max-height: 1079px) {
+
+    .recent-course-table {
+      gap: 5px;
+    }
+
+    .dashboard-columns .recent-course-row {
+      min-height: 0;
+    }
+
+    .upcoming-course-card {
+      gap: 2px 14px;
+    }
+
+    /* 안쪽 여백 120%를 유지하되, 짧은 화면에서는 절대값을 줄입니다. */
+  }
+  /* ==================================================
+   * 26. 로그인 화면
+   *  - (1) 오른쪽 흰 영역: 카드를 키우고 요소 간격을 벌려
+   *        바깥 여백을 기존의 60% 수준(가로 254→152 / 세로 136→82)으로 줄입니다.
+   *  - (2) 왼쪽 보라 영역: 글씨 110%, 줄 간격 110%.
+   * ================================================== */
+
+  /* --- (2) 왼쪽 보라 패널 --- */
+  .login-brand-panel {
+    padding: 59px 48px;
+  }
+
+  .login-eyebrow {
+    margin-bottom: 29px;                 /* 12.6 × 1.1 */
+    line-height: 1.76;                 /* 1.6 × 1.1 */
+  }
+
+  /* 110%로 키우되, 패널 폭이 좁아지면 두 줄이 유지되도록 폭에 연동합니다. */
+  .login-brand-panel h1 {
+    max-width: none;   /* 42.6 × 1.09 */                       /* 1.32 × 1.1 */
+  }
+
+  .login-brand-copy {
+    max-width: 715px;
+    margin-top: 37px;                 /* 18 × 1.1 */                /* 2.05 × 1.1 */
+  }
+
+  .login-feature-strip {
+    margin-top: 50px;
+    gap: 16px;
+  }
+
+  /* --- (1) 오른쪽 로그인 카드 --- */
+
+  .login-card {
+    width: 100%;                  /* 600 → 804px */
+  }
+
+  .login-security-note {
+    max-width: none;                 /* 17 × 1.1 */
+  }
+
+  /* 좁은 화면에서는 기존 동작을 유지합니다. */
+  @media (max-width: 1100px) {
+
+    .login-brand-panel {
+      padding: 44px 32px;
+    }
+  }
+  /* ==================================================
+   * 27. 비밀번호 변경 팝업 정리
+   *  - 같은 안내문이 부제목과 파란 박스에 두 번 나오던 것을 한 번으로
+   *  - 2열 그리드에 3개가 들어가 어긋나던 배치를 1열로
+   *  - 큰 본문 라벨(21.6px)이 팝업에서 과하게 커 보이던 것을 축소
+   * ================================================== */
+  .pw-change-modal {
+    width: min(560px, 100%);
+  }
+
+  .pw-change-modal .modal-head h3 {
+    font-size: 24px;
+    letter-spacing: -0.03em;
+  }
+
+  .pw-change-modal .modal-head p {
+    margin-top: 6px;
+    color: var(--ink-500);
+    font-size: 14.5px;
+    line-height: 1.55;
+  }
+
+  .pw-change-lead {
+    margin: 0 0 18px;
+    border: 1px solid var(--violet-100);
+    border-radius: 12px;
+    padding: 11px 14px;
+    color: var(--violet-800);
+    background: var(--violet-50);
+    font-size: 13.8px;
+    font-weight: 700;
+    line-height: 1.55;
+  }
+
+  /* 3개 입력칸을 한 줄씩 세로로 */
+  .pw-change-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .pw-change-modal .form-field {
+    gap: 7px;
+  }
+
+  .pw-change-modal .form-field > label {
+    color: var(--ink-700);
+    font-size: 14.5px;                 /* 본문 21.6px → 팝업용으로 축소 */
+    font-weight: 800;
+  }
+
+  .pw-change-modal .password-field-control {
+    position: relative;
+    display: block;
+  }
+
+  /* '보기' 버튼과 겹쳐 글씨가 잘리던 문제 — 오른쪽 여백을 버튼 폭만큼 확보 */
+  .pw-change-modal .password-field-control input {
+    width: 100%;
+    min-height: 50px;
+    padding: 0 76px 0 15px;
+    font-size: 15.5px;
+  }
+
+  .pw-change-modal .password-peek {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    min-width: 58px;
+    min-height: 34px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 0 10px;
+    color: var(--ink-600);
+    background: #fff;
+    transform: translateY(-50%);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .pw-change-modal .password-peek:hover,
+  .pw-change-modal .password-peek.active {
+    border-color: var(--violet-300);
+    color: var(--violet-700);
+    background: var(--violet-50);
+  }
+
+  /* 노란 강조는 과해서 걷어냅니다. 대신 새 비밀번호 두 칸만 은은한 보라 테두리로 */
+  .pw-change-modal #newPassword,
+  .pw-change-modal #newPasswordConfirm {
+    border-color: var(--violet-200);
+    background: #fff;
+  }
+
+  .pw-change-modal #newPassword:focus,
+  .pw-change-modal #newPasswordConfirm:focus {
+    border-color: var(--violet-600);
+    box-shadow: 0 0 0 4px rgba(109, 69, 232, 0.14);
+  }
+
+  /* 비밀번호 조건을 문단 대신 짧은 칩 세 개로 */
+  .pw-change-rules {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pw-change-rules li {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 12px;
+    color: var(--ink-600);
+    background: var(--surface-soft, #f6f5f9);
+    font-size: 12.6px;
+    font-weight: 750;
+  }
+
+  .pw-change-rules li::before {
+    margin-right: 6px;
+    color: var(--violet-600);
+    content: "✓";
+    font-weight: 900;
+  }
+
+  .pw-change-modal .login-help-result:not(.hidden) {
+    margin-top: 14px;
+    font-size: 13.6px;
+  }
+
+  /* 버튼 두 개를 같은 비중으로 나란히 */
+  .pw-change-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+
+  .pw-change-actions .btn {
+    width: 100%;
+    min-height: 52px;
+    font-size: 15.5px;
+  }
+
+  @media (max-width: 520px) {
+    .pw-change-actions {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  /* ==================================================
+   * 28. 추가 보정
+   *  (1) 로그인 카드: 요소 사이 간격 110%
+   *  (2) 운영 홈: 각 박스의 안쪽 여백(글씨~테두리) 120%
+   *  (3) 히어로 오른쪽 카드: 폭 130% + 접속자 글씨 확대
+   *  (4) '지금 변경하기' 버튼 글씨 축소
+   * ================================================== */
+
+  /* --- (1) 로그인 카드 간격 110% --- */
+
+  /* --- (2) 운영 홈 박스 안쪽 여백 120% --- */
+
+  .dashboard-profile-callout {
+    padding: clamp(5px, 0.84vh, 11px) 24px;
+  }
+
+  .metric-card {
+    padding: clamp(12px, 1.92vh, 22px) 24px;
+  }
+
+  .dashboard-columns > .panel.panel-pad {
+    padding: clamp(13px, 2.04vh, 19px) 22px;
+  }
+
+  .dashboard-columns .recent-course-head {
+    padding-inline: 17px;
+  }
+
+  .dashboard-columns .recent-course-row {
+    padding: clamp(5px, 0.96vh, 14px) 17px;
+  }
+
+  .upcoming-course-card {
+    padding: clamp(12px, 2.04vh, 24px);
+  }
+
+  .dashboard-hero .hero-side .hero-status-button {
+    padding: clamp(12px, 2.16vh, 24px) 31px;
+  }
+
+  .hero-visits {
+    padding: clamp(12px, 2.04vh, 22px) 31px;
+  }
+
+  /* --- (3) 히어로 오른쪽 카드 폭 130% + 접속자 글씨 확대 --- */
+  .dashboard-hero {
+    grid-template-columns: minmax(0, 1fr) clamp(430px, 43.3%, 614px);
+  }
+
+  .hero-side {
+    width: 100%;                       /* 폭은 위 grid 열이 정합니다 (472 × 1.3 = 614px) */
+  }
+
+  .hero-status-button {
+    width: 100%;
+  }
+
+  .hero-visit-list {
+    gap: clamp(5px, 1vh, 10px);
+  }
+
+  .hero-visit-dot {
+    width: 9px;
+    height: 9px;
+  }
+
+  /* 오른쪽 카드가 넓어진 만큼 제목이 세 줄로 접히지 않도록 폭 계수를 낮춥니다. */
+
+  /* --- (4) '지금 변경하기' 버튼 --- */
+  .dashboard-profile-action {
+    min-width: 132px;
+    border-radius: 10px;   /* 22.7 → 14.5px */
+    font-weight: 800;
+  }
+  /* ==================================================
+   * 29. 짧은 화면 최종 보정
+   *  28번의 여백 120% 규칙보다 뒤에 두어야 적용되므로 맨 끝에 둡니다.
+   *  비율은 유지하되 절대값만 줄여 스크롤을 없앱니다.
+   * ================================================== */
+  @media (min-width: 961px) and (max-height: 1079px) {
+
+    .dashboard-profile-callout {
+      padding: clamp(4px, 0.5vh, 10px) 22px;
+    }
+
+    .metric-card {
+      padding: clamp(9px, 1.15vh, 20px) 22px;
+    }
+
+    .dashboard-columns > .panel.panel-pad {
+      padding: clamp(9px, 1.2vh, 18px) 20px;
+    }
+
+    .dashboard-hero .hero-side .hero-status-button {
+      padding: clamp(10px, 1.3vh, 22px) 28px;
+    }
+
+    .hero-visits {
+      padding: clamp(10px, 1.25vh, 20px) 28px;
+    }
+
+    .dashboard-columns .recent-course-row {
+      padding: clamp(4px, 0.55vh, 13px) 16px;
+    }
+
+    .upcoming-course-card {
+      padding: clamp(9px, 1.2vh, 22px) 16px;
+    }
+
+    /* 여백이 줄어든 만큼 배율과 블록 높이를 되돌려,
+       아래 빈 공간을 30% 수준으로 맞춥니다. */
+
+    .dashboard-hero {
+      min-height: clamp(250px, 35.4vh, 505px);
+    }
+
+    .metric-card {
+      min-height: clamp(116px, 16.4vh, 218px);
+    }
+
+    .dashboard-columns > .panel.panel-pad {
+      min-height: clamp(150px, 28.4vh, 320px);
+    }
+  }
+
+  /* 1000px 미만은 한 단계 더 축소해야 스크롤이 생기지 않습니다. */
+  /* ==================================================
+   * 30. 전 탭 공통 레이아웃 개편
+   *  용어: 소제목 = .page-heading / 요소 박스 = page-stack 의 마지막 큰 박스
+   *        요소 = 입력칸·선택 카드 / 요소 제목 = 입력칸 위 이름표
+   *
+   *  핵심 원칙(요청 7번):
+   *   ① 요소 박스가 남은 세로 공간을 모두 차지하게 만들고
+   *   ② 그 안에 여백을 충분히 확보한 뒤
+   *   ③ 남는 공간 안에서 글씨 크기를 키웁니다.
+   * ================================================== */
+
+  /* --- ① 요소 박스가 화면 아래까지 차오르도록 --- */
+  .content-root {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .content-root > .page-stack {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .content-root > .page-stack > * {
+    flex: 0 0 auto;
+  }
+
+  /* 운영 홈은 별도로 맞춰둔 vh 비율을 그대로 씁니다. */
+  .content-root > .page-stack > *:last-child:not(.dashboard-columns) {
+    min-height: 0;
+  }
+
+  /* 요소 박스 안: 내용은 위, 주요 버튼 줄은 아래에 고정 */
+  /* 원래 grid 로 2열을 쓰는 블록(.dashboard-columns, .inquiry-layout)은
+     세로 배치로 바꾸면 안 되므로 제외합니다. */
+  .profile-form-panel,
+  .course-wizard,
+  .page-stack > .panel:last-child,
+  .page-stack > section:last-child:not(.dashboard-columns) {
+    flex-direction: column;
+  }
+
+  .course-wizard-body {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .course-wizard-step.active {
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+
+  /* 카드 목록형 탭(개설된 강의·과거 기록)은 카드가 위에서부터 쌓이게 두고,
+     카드 자체를 키워 아래 빈 공간을 줄입니다. */
+  .course-card-grid {
+    align-content: start;
+  }
+
+  .course-card {
+    min-height: clamp(200px, 24vh, 268px);
+  }
+
+  /* --- ② 요소 박스 안쪽 여백 120% --- */
+
+  /* --- 소제목(120%) --- */
+
+  /* --- 요소 제목(110%) --- */
+
+  /* --- 요소(입력칸·선택 카드) 높이 110% + 글씨 110% --- */
+
+  /* --- 요소 사이 상하 간격 105% --- */
+  .form-grid {
+    gap: clamp(12px, 1.3vh, 18px) 24px;
+  }
+
+  .profile-form-grid {
+    gap: clamp(11px, 1.25vh, 17px) 24px;
+  }
+
+  .wizard-form-grid {
+    margin-top: clamp(10px, 1.2vh, 16px);
+    gap: clamp(12px, 1.3vh, 18px) 24px;
+  }
+
+  /* ==================================================
+   * 31. 요소 박스 내부 공간 분배 + 마감 정리
+   *  남는 세로 공간을 한 곳에 몰아두지 않고 요소들 사이에 고르게 나눕니다.
+   * ================================================== */
+
+  /* --- 관리자 기본 정보: 입력칸 3줄이 세로 공간을 나눠 갖습니다 --- */
+
+  .profile-form-panel .profile-disclosure,
+  .profile-form-panel .profile-auto-note {
+    flex: 0 0 auto;
+  }
+
+  /* --- 강의 개설: 단계 본문이 세로로 균등하게 퍼집니다 --- */
+  .course-wizard-step.active {
+    justify-content: space-between;
+    gap: clamp(8px, 1.1vh, 16px);
+  }
+
+  .course-wizard-step.active > * {
+    margin-top: 0;
+  }
+
+  /* ==================================================
+   * 32. 마감 품질 (아마추어 느낌 제거)
+   * ================================================== */
+
+  /* --- (a) 글자 굵기 정리 ---
+     900/950 처럼 과한 굵기가 섞여 한글이 뭉개져 보였습니다.
+     제목 800 / 강조 700 / 본문 600 세 단계로 정리합니다. */
+  .page-heading h2,
+  .panel-title,
+  .section-heading h3,
+  .metric-value strong,
+  .hero-copy h2,
+  #loginTitle,
+  .modal-head h3 {
+    font-weight: 800;
+  }
+
+  .nav-item,
+  .form-field > label,
+  .field-label,
+  .btn,
+  .topbar h1,
+  .sidebar-user-copy strong,
+  .metric-label,
+  .recent-course-row > strong,
+  .upcoming-course-card > strong,
+  .hero-visit-name,
+  .status-chip,
+  .nav-badge {
+    font-weight: 700;
+  }
+
+  .nav-item.active {
+    font-weight: 800;
+  }
+
+  .page-heading p,
+  .panel-description,
+  .section-heading p,
+  .hero-copy p,
+  .login-description,
+  .modal-head p,
+  .empty-state p,
+  .metric-title-item,
+  .recent-course-row > span,
+  .upcoming-course-card > span:not(.course-date-tile),
+  .hero-visit-at {
+    font-weight: 500;
+  }
+
+  .nav-label,
+  .topbar-eyebrow,
+  .hero-eyebrow,
+  .login-kicker,
+  .login-eyebrow,
+  .recent-course-head {
+    font-weight: 750;
+    letter-spacing: 0.14em;
+  }
+
+  /* --- (b) 필수 표시 ---
+     빨간 별표가 이름표보다 튀어 보였습니다. 작고 차분한 점으로 바꿉니다. */
+  .required::after {
+    display: inline-block;
+    border-radius: 50%;
+    content: "";
+    vertical-align: middle;
+    transform: translateY(-0.35em);
+  }
+
+  /* --- (c) 포커스 링 통일 --- */
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  .btn:focus-visible,
+  .nav-item:focus-visible,
+  .choice-card input:focus-visible + span {
+    outline: none;
+    border-color: var(--violet-600);
+    box-shadow: 0 0 0 3px rgba(91, 53, 213, 0.16);
+  }
+
+  /* --- (d) 모서리 반경 체계화 (10 / 14 / 18 / 22) --- */
+  .btn,
+  .btn-small,
+  .btn-compact,
+  .status-chip {
+    border-radius: 12px;
+  }
+
+  .panel,
+  .filter-toolbar,
+  .course-card,
+  .recent-course-row,
+  .upcoming-course-card,
+  .profile-disclosure,
+  .profile-auto-note,
+  .warning-callout,
+  .success-callout,
+  .info-callout {
+    border-radius: 16px;
+  }
+
+  /* --- (e) 패널 입체감 ---
+     테두리 1px만으로는 납작해 보여, 아주 옅은 그림자를 한 겹 얹습니다. */
+
+  /* --- (f) 입력칸 기본/호버 상태 --- */
+  .form-field input,
+  .form-field select,
+  .form-field textarea {
+    transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  }
+
+  .form-field input:hover:not(:focus),
+  .form-field select:hover:not(:focus),
+  .form-field textarea:hover:not(:focus) {
+    border-color: #cfc7db;
+    background: #fff;
+  }
+
+  /* --- (g) 선택 카드: 선택 상태를 더 분명하게 --- */
+  .course-wizard .choice-card > span {
+    transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  }
+
+  /* --- (h) 버튼: 눌리는 느낌 --- */
+  .btn:active {
+    transform: translateY(1px);
+  }
+
+  /* --- (i) 표 헤더 --- */
+  .recent-course-head {
+    text-transform: none;
+    letter-spacing: 0.01em;
+  }
+</style>

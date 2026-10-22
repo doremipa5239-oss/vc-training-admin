@@ -1,0 +1,199 @@
+/****************************************************
+ * [8_MealAutoAssign.gs] 식사 자동 배정 미리보기 · 확정 저장 (포털 API)
+ ****************************************************/
+
+/** Authentication/storage adapter. The deterministic solver is shared with browser previews and tests. */
+const MEAL_PREVIEW_MAX_AGE_MS_ = 15 * 60 * 1000;
+const MEAL_PREVIEW_STATE_PREFIX_ = 'VUP_MEAL_STATE_V2_';
+
+function portalGenerateMealAssignment(token, payload) {
+  return withAdminSession_(token, function (admin) {
+    const input = payload || {}, siteId = normalizePublicSiteId_(input.siteId);
+    const site = assertCourseAccess_(admin, siteId);
+    if (isSiteTrashed_(site)) throw new Error('휴지통에 있는 강의에는 배정할 수 없습니다.');
+    const participants = normalizePortalParticipants_(input.participants);
+    const slots = normalizePortalMealSlots_(site.mealSlots);
+    const tableCount = input.tableCount == null || input.tableCount === '' ? Math.max(2, Math.ceil(participants.length / 6)) : Number(input.tableCount);
+    if (!Number.isSafeInteger(tableCount) || tableCount < 1 || tableCount > 100) throw new Error('테이블 수는 1~100 사이의 정수로 입력해주세요.');
+    const source = { participants: participants, mealSlots: slots, tableCount: tableCount,
+      seatGrid: normalizeConstraintGrid_(input.seatGrid, participants, 'seat'),
+      roommateRows: normalizeConstraintGrid_(input.roommateRows, participants, 'room'),
+      fixedAssignments: normalizePortalFixedMeals_(input.fixedAssignments),
+      priorMeetings: normalizePortalMealHistory_(input.priorMeetings), seed: String(input.seed || 'vup-20260907').slice(0, 100) };
+    const sourceHash = hashText_(JSON.stringify(source));
+    const assignment = VupAssignment.generateMeals(source);
+    const currentRevision = Number(site.revision || 0);
+    const makeFingerprint = function (revision) { return hashText_(JSON.stringify({ version: 2, siteId: siteId, revision: revision, sourceHash: sourceHash, rows: assignment.rows })); };
+    const fingerprint = makeFingerprint(currentRevision);
+    const response = { success: true, previewOnly: input.commit !== true, participantCount: participants.length, mealCount: slots.length,
+      tableCount: tableCount, preview: assignment.preview, violations: assignment.violations, stats: assignment.stats,
+      previewFingerprint: fingerprint, revision: currentRevision,
+      message: assignment.violations.length ? '배정안을 만들었습니다. 남아 있는 회피 조건을 확인해주세요.' : '배정안을 만들었습니다. 확인 후 15분 안에 확정해주세요.' };
+    const key = MEAL_PREVIEW_STATE_PREFIX_ + hashText_(admin.id + '|' + siteId);
+    const properties = PropertiesService.getScriptProperties();
+    if (input.commit !== true) {
+      return withCourseMutation_(admin, siteId, currentRevision, function () {
+        properties.setProperty(key, JSON.stringify({ phase: 'preview', sourceHash: sourceHash, revision: currentRevision, fingerprint: fingerprint, issuedAt: Date.now() }));
+        return response;
+      });
+    }
+    if (!/^[a-f0-9]{64}$/.test(String(input.previewFingerprint || ''))) throw new Error('배정안을 먼저 미리보기로 확인해주세요.');
+    if (assignment.violations.length && input.reviewWarnings !== true) throw new Error('남아 있는 배정 조건을 확인한 뒤 확인란을 선택해주세요.');
+    return withCourseMutation_(admin, siteId, null, function (latest) {
+      let state;
+      try { state = JSON.parse(properties.getProperty(key) || 'null'); } catch (error) { state = null; }
+      if (!state || ['preview', 'writing', 'committed'].indexOf(state.phase) < 0 || !Number.isSafeInteger(state.revision) || !Number.isFinite(state.issuedAt) || Date.now() - state.issuedAt > MEAL_PREVIEW_MAX_AGE_MS_ || state.issuedAt > Date.now()) throw new Error('미리보기가 만료되었습니다. 배정안을 다시 확인해주세요.');
+      if (state.sourceHash !== sourceHash || state.fingerprint !== input.previewFingerprint || state.fingerprint !== makeFingerprint(state.revision)) throw new Error('미리보기 이후 명단·일정·배정 조건이 변경되었습니다. 배정안을 다시 확인해주세요.');
+      if (state.phase === 'writing' && Number(latest.revision) === Number(state.resumeRevision) + 1 && latest.linkedSheetId === state.spreadsheetId && String(latest.memo || '').split('\n').indexOf('mealCommit:' + state.fingerprint) !== -1) {
+        state.phase = 'committed'; state.committedRevision = Number(latest.revision); state.spreadsheetUrl = latest.linkedSheetUrl;
+        try { properties.setProperty(key, JSON.stringify(state)); } catch (receiptError) {}
+      }
+      if (state.phase === 'committed') {
+        assertExpectedRevision_(state.committedRevision, latest.revision || 0);
+        return Object.assign({}, response, { previewOnly: false, reused: true, previewFingerprint: state.fingerprint, revision: state.committedRevision, spreadsheetUrl: state.spreadsheetUrl, message: '이미 확정한 같은 배정 요청입니다. 기존 저장 결과를 불러왔습니다.' });
+      }
+      if (state.phase === 'writing' && !Number.isSafeInteger(state.resumeRevision)) throw new Error('저장 상태를 확인할 수 없습니다. 배정안을 다시 확인해주세요.');
+      assertExpectedRevision_(state.phase === 'writing' ? state.resumeRevision : state.revision, latest.revision || 0);
+      const spreadsheetId = ensureLinkedMealSpreadsheet_(latest);
+      const file = DriveApp.getFileById(spreadsheetId);
+      if (file.getSharingAccess() !== DriveApp.Access.PRIVATE) throw new Error('연동 시트가 링크 또는 조직 전체에 공개되어 있습니다. 교육생 휴대폰 보호를 위해 Google Drive에서 일반 액세스를 제한됨으로 바꾼 뒤 다시 배정해주세요.');
+      state.phase = 'writing'; state.spreadsheetId = spreadsheetId;
+      state.resumeRevision = Number(getSiteInfoById_(siteId).revision || 0);
+      properties.setProperty(key, JSON.stringify(state));
+      let result;
+      try { result = savePortalMealRows_(siteId, spreadsheetId, participants, slots, assignment.rows, state.fingerprint); }
+      catch (saveError) { throw new Error('배정 저장을 완료하지 못했습니다. 일부 시트 내용은 반영되었을 수 있습니다. 같은 확정 요청을 다시 시도하거나 연동 시트를 확인해주세요. ' + saveError.message); }
+      clearUserDataCache_(siteId);
+      appendAuditLog_('PORTAL_MEAL_AUTO_ASSIGNED', siteId, { participantCount: participants.length, mealCount: slots.length, tableCount: tableCount, warningCount: assignment.violations.length, fingerprint: state.fingerprint });
+      state.phase = 'committed'; state.committedRevision = result.revision; state.spreadsheetUrl = result.spreadsheetUrl;
+      try { properties.setProperty(key, JSON.stringify(state)); }
+      catch (receiptError) { appendAuditLog_('MEAL_COMMIT_RECEIPT_FAILED', siteId, { fingerprint: state.fingerprint }); }
+      return Object.assign({}, response, { previewOnly: false, previewFingerprint: state.fingerprint, spreadsheetUrl: result.spreadsheetUrl, revision: result.revision,
+        message: '식사 배정을 저장했습니다. 사용자 사이트의 공개 일정에 따라 표시됩니다.' });
+    });
+  });
+}
+
+function normalizePortalMealSlots_(source) {
+  if (!Array.isArray(source) || !source.length || source.length > 30) throw new Error('강의 기본 정보에서 식사 일정을 확인해주세요.');
+  const seen = new Set(), headers = new Set();
+  return source.map(function (slot) {
+    if (!slot || !Number.isInteger(Number(slot.day)) || Number(slot.day) < 1 || Number(slot.day) > 5 || ['lunch', 'dinner'].indexOf(slot.type) < 0) throw new Error('강의 식사 일차와 종류를 확인해주세요.');
+    const id = String(slot.id || slot.seatKey || ('day' + slot.day + '_' + slot.type)).trim();
+    const label = Number(slot.day) + '일차 ' + (slot.type === 'dinner' ? '저녁' : '점심');
+    if (!id || id.length > 60 || seen.has(id) || headers.has(label)) throw new Error('중복되거나 잘못된 식사 일정입니다.');
+    seen.add(id); headers.add(label);
+    return { id: id, label: label };
+  });
+}
+
+function normalizeMealReference_(value) {
+  let explicitId = false;
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    if (value.id != null) { value = value.id; explicitId = true; }
+    else if (value.participantId != null) { value = value.participantId; explicitId = true; }
+    else value = value.name;
+  }
+  if (typeof value !== 'string' && typeof value !== 'number') throw new Error('배정 예외의 교육생 ID 또는 이름을 확인해주세요.');
+  const text = String(value).trim().normalize('NFC');
+  if (!text || text.length > 80 || /[\u0000-\u001f]/.test(text)) throw new Error('배정 예외의 교육생 ID 또는 이름을 확인해주세요.');
+  return explicitId ? { id: text } : text;
+}
+
+function normalizePortalFixedMeals_(source) {
+  if (source == null) return [];
+  if (!Array.isArray(source) || source.length > 5000) throw new Error('고정 배정은 5,000건 이내로 입력해주세요.');
+  return source.map(function (entry) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new Error('고정 배정 형식이 잘못되었습니다.');
+    const slotId = entry.slotId == null ? '*' : String(entry.slotId).trim();
+    if (!slotId || slotId.length > 60) throw new Error('고정 배정 식사 회차를 확인해주세요.');
+    const table = Number(entry.table);
+    if (!Number.isSafeInteger(table) || table < 1 || table > 100) throw new Error('고정 테이블 번호를 확인해주세요.');
+    const fixed = { slotId: slotId, table: table };
+    if (entry.participantId != null) {
+      if (typeof entry.participantId !== 'string' && typeof entry.participantId !== 'number') throw new Error('고정 배정 교육생 ID를 확인해주세요.');
+      fixed.participantId = normalizeMealReference_(entry.participantId);
+    }
+    else fixed.participant = normalizeMealReference_(entry.participant);
+    return fixed;
+  });
+}
+
+function normalizePortalMealHistory_(source) {
+  if (source == null) return [];
+  if (!Array.isArray(source) || source.length > 20000) throw new Error('이전 동석 기록은 20,000건 이내로 입력해주세요.');
+  let pairCount = 0;
+  return source.map(function (entry) {
+    if (!entry || !Array.isArray(entry.participantIds) || entry.participantIds.length < 2 || entry.participantIds.length > 500) throw new Error('이전 동석 기록의 교육생 목록을 확인해주세요.');
+    pairCount += entry.participantIds.length * (entry.participantIds.length - 1) / 2;
+    if (pairCount > 250000) throw new Error('이전 동석 기록의 조합이 너무 많습니다. 중복된 기록을 정리해주세요.');
+    const count = entry.count == null ? 1 : Number(entry.count);
+    if (!Number.isSafeInteger(count) || count < 1 || count > 10000) throw new Error('이전 동석 횟수를 확인해주세요.');
+    return { participantIds: entry.participantIds.map(normalizeMealReference_), count: count };
+  });
+}
+
+/** 기존 문자열 파서의 최소 8열 패딩을 사용하지 않아 식사 1~3회 과정도 정확히 저장합니다. */
+function savePortalMealRows_(siteId, spreadsheetId, participants, slots, assignments, fingerprint) {
+  if (!Array.isArray(assignments) || assignments.length !== participants.length || assignments.some(function (row) { return !Array.isArray(row) || row.length !== slots.length; })) throw new Error('배정 결과의 행·열 수가 맞지 않습니다.');
+  const ss = SpreadsheetApp.openById(spreadsheetId), name = 'AI 생성_교육생 자리 배치';
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) sheet = ss.insertSheet(name);
+  const headers = PARTICIPANT_BASE_HEADERS.concat(slots.map(function (slot) { return slot.label + ' 자리번호'; }));
+  const data = [headers].concat(participants.map(function (person, index) { return [person.name, person.company, person.position, person.phone].concat(assignments[index]); }));
+  const height = Math.max(data.length, sheet.getLastRow()), width = Math.max(headers.length, sheet.getLastColumn());
+  if (height > 2001 || width > 100 || height * width > 100000) throw new Error('기존 자동 생성 시트의 크기가 너무 큽니다. 기존 자료를 확인해주세요.');
+  if (sheet.getMaxRows() < height) sheet.insertRowsAfter(sheet.getMaxRows(), height - sheet.getMaxRows());
+  if (sheet.getMaxColumns() < width) sheet.insertColumnsAfter(sheet.getMaxColumns(), width - sheet.getMaxColumns());
+  const matrix = Array.from({ length: height }, function (_, r) { return Array.from({ length: width }, function (_, c) { return data[r] && data[r][c] != null ? data[r][c] : ''; }); });
+  sheet.getRange(1, 1, height, width).setValues(safeSheetRows_(matrix));
+  SpreadsheetApp.flush();
+  try { sheet.setFrozenRows(1); applyParticipantSheetDesign_(sheet, headers.length, participants.length, new Set()); }
+  catch (formatError) { appendAuditLog_('MEAL_FORMATTING_FAILED', siteId, { message: String(formatError.message || '').slice(0, 200) }); }
+  const url = ss.getUrl() + '#gid=' + sheet.getSheetId();
+  updateSiteRowById_(getOrCreateSitesSheet_(getSpreadsheet_()), siteId, function (row) {
+    row[COL.linkedSheetId - 1] = spreadsheetId; row[COL.linkedSheetUrl - 1] = url;
+    row[COL.dataReviewConfirmedAt - 1] = new Date(); row[COL.updatedAt - 1] = new Date();
+    row[COL.memo - 1] = String(row[COL.memo - 1] || '').replace(/(?:^|\n)mealCommit:[a-f0-9]{64}(?=\n|$)/g, '').replace(/\n+$/, '') + '\nmealCommit:' + fingerprint;
+    return row;
+  });
+  return { spreadsheetUrl: url, revision: Number(getSiteInfoById_(siteId).revision || 0) };
+}
+
+function normalizePortalParticipants_(source) {
+  if (!Array.isArray(source) || source.length < 2 || source.length > 500) throw new Error('식사 배정은 교육생 2~500명으로 진행해주세요.');
+  const seen = new Set(), ids = new Set();
+  const clean = function (v, limit) { return String(v == null ? '' : v).replace(/[\t\r\n\u0000-\u001f]/g, ' ').trim().normalize('NFC').slice(0, limit); };
+  return source.map(function (p, index) {
+    if (!p || !clean(p.name, 80)) throw new Error((index + 1) + '행 이름이 비어 있습니다.');
+    if (p.excludedMeals != null && (!Array.isArray(p.excludedMeals) || p.excludedMeals.length > 30)) throw new Error('개인별 불참 회차를 확인해주세요.');
+    const phone = String(p.phone || '').replace(/[^\d]/g, '');
+    if (!/^\d{9,15}$/.test(phone)) throw new Error(clean(p.name, 80) + ' 교육생의 휴대폰 전체 번호를 확인해주세요.');
+    const name = clean(p.name, 80), key = name.replace(/\s/g, '') + '|' + phone.slice(-4);
+    if (seen.has(key)) throw new Error('이름과 전화번호 끝 4자리가 같은 교육생이 있습니다: ' + name);
+    seen.add(key);
+    const personId = clean(p.id == null ? 'meal_' + index : p.id, 80);
+    if (!personId || ids.has(personId)) throw new Error('교육생 ID가 비어 있거나 중복됩니다.');
+    ids.add(personId);
+    return { id: personId, name: name, company: clean(p.company, 120), position: clean(p.position, 80), phone: phone,
+      excludedMeals: (Array.isArray(p.excludedMeals) ? p.excludedMeals : []).map(function (value) { return clean(value, 60); }).slice(0, 30) };
+  });
+}
+
+function normalizeConstraintGrid_(source, participants, kind) {
+  if (source == null) return [];
+  if (!Array.isArray(source) || source.length > 1000) throw new Error('좌석·룸메이트 표의 크기를 확인해주세요.');
+  const known = new Set();
+  participants.forEach(function (p) { known.add(p.id); known.add(p.name); });
+  return source.map(function (row) {
+    if (!Array.isArray(row) || row.length > 100) throw new Error('좌석·룸메이트 표는 100열 이내로 올려주세요.');
+    const cells = row.map(function (cell) {
+      const value = String(cell == null ? '' : cell).trim();
+      if (!value || known.has(value)) return value;
+      const label = value.replace(/\s/g, '');
+      if (/^(강의장앞|강의장|강단|STAGE|stage|통로|창가|입구|출입구|구분|좌석|이름|성명[12]?|성별|룸메이트[12]?|객실|객실번호|호실|번호|NO|No|남|여|남성|여성|트윈|싱글|[12]인실|\d+(?:호|호실|번)?)$/.test(label)) return '';
+      throw new Error('명단에 없는 이름 또는 ID가 배정표에 있습니다: ' + value.slice(0, 80));
+    });
+    return kind === 'room' ? cells.filter(Boolean) : cells;
+  });
+}
