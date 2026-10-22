@@ -717,15 +717,17 @@ function createDedicatedMealSpreadsheet(label, targetFolderId, requestId) {
     buildRoommateTemplate_(rSheet);
     markGeneratedSheet_(rSheet, 'roommate', rSheet.getName());
 
-    // 기본 생성되는 빈 시트 제거
-    const sheets = ss.getSheets();
-    for (let i = 0; i < sheets.length; i++) {
-      const name = sheets[i].getName();
-      if (name !== pSheet.getName() && name !== sSheet.getName() && name !== rSheet.getName()) {
-        ss.deleteSheet(sheets[i]);
-        break;
+    // 기본 생성되는 빈 시트 제거 (내가 만든 표준 3개는 ID로 보호)
+    const keepSheetIds = {};
+    keepSheetIds[pSheet.getSheetId()] = true;
+    keepSheetIds[sSheet.getSheetId()] = true;
+    keepSheetIds[rSheet.getSheetId()] = true;
+    ss.getSheets().forEach(function (existingSheet) {
+      // 시트가 최소 1개는 남아야 하므로, 표준 3개가 모두 있을 때만 그 외 시트를 지웁니다.
+      if (!keepSheetIds[existingSheet.getSheetId()] && ss.getNumSheets() > 1) {
+        ss.deleteSheet(existingSheet);
       }
-    }
+    });
 
     // 관리자가 드라이브 탐색기에서 선택한 폴더로 새 스프레드시트 파일을 이동합니다.
     // 'root' 또는 빈 값이면 내 드라이브의 기본 위치에 그대로 둡니다.
