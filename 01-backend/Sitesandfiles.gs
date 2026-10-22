@@ -418,6 +418,7 @@ function deleteEducationSite(siteId) {
       row[COL.deletedAt - 1] = now;
       row[COL.purgeAt - 1] = purgeAt;
       row[COL.status - 1] = '휴지통';
+      row[COL.revision - 1] = Number(row[COL.revision - 1] || 0) + 1;  // ← 추가
       row[COL.updatedAt - 1] = now;
       return row;
     });
