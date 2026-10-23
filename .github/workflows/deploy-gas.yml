@@ -37,7 +37,7 @@ jobs:
         run: |
           mkdir -p dist
           cp 01-backend/*.gs dist/
-          cp 02-frontend/*.html dist/
+          cp 02-frontend/admin.html 02-frontend/admin-main.html dist/
           cp appsscript.json dist/
 
           cat 02-frontend/admin-style-{1,2,3}.html \
