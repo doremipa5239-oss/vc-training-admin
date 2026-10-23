@@ -1,1 +1,79 @@
+name: Deploy Apps Script
 
+on:
+  push:
+    branches: [main]
+    paths:
+      - "01-backend/**"
+      - "02-frontend/**"
+      - "appsscript.json"
+      - ".github/workflows/deploy-gas.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gas-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install clasp
+        run: npm install -g @google/clasp@3.4.1
+
+      - name: Prepare Apps Script files
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp 01-backend/*.gs dist/
+          cp 02-frontend/*.html dist/
+          cp appsscript.json dist/
+
+          cat 02-frontend/admin-style-{1,2,3}.html \
+            > dist/admin-style.html
+
+          cat 02-frontend/admin-script-{1,2,3}.html \
+            > dist/admin-script.html
+
+      - name: Configure Google authentication
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
+        shell: bash
+        run: |
+          test -n "$CLASPRC_JSON"
+          test -n "$GAS_SCRIPT_ID"
+          umask 077
+
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+          jq -n --arg id "$GAS_SCRIPT_ID" \
+            '{scriptId: $id, rootDir: "dist",
+              filePushOrder: ["dist/Config.gs"]}' \
+            > .clasp.json
+
+      - name: Upload code
+        run: clasp push --force
+
+      - name: Update web app deployment
+        env:
+          GAS_DEPLOYMENT_ID: ${{ secrets.GAS_DEPLOYMENT_ID }}
+        shell: bash
+        run: |
+          if [ -n "$GAS_DEPLOYMENT_ID" ]; then
+            clasp update-deployment "$GAS_DEPLOYMENT_ID" \
+              --description "GitHub ${GITHUB_SHA}"
+          else
+            echo "Initial upload complete. Create the first web app deployment."
+          fi
