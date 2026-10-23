@@ -398,8 +398,8 @@
       STATE.busy = busy;
       ELEMENTS.loginSubmit.disabled = busy;
       ELEMENTS.loginSubmit.innerHTML = busy
-        ? "<span>로그인 확인 중...</span><span>•••</span>"
-        : "<span>관리자 콘솔 시작하기</span><span aria-hidden=\"true\">→</span>";
+        ? "<span>로그인 확인 중...</span>"
+        : "<span>로그인</span>";
     }
 
     function showLoginError(message) {
