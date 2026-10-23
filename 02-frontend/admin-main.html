@@ -1,111 +1,65 @@
 <a class="skip-link" href="#contentRoot">본문으로 바로가기</a>
 <div id="portalRoot" class="portal-root">
-  <section id="loginView" class="login-view" aria-labelledby="loginTitle">
-    <div class="login-ambient login-ambient-one"></div>
-    <div class="login-ambient login-ambient-two"></div>
-
-    <div class="login-brand-panel">
-      <div class="login-brand-content">
-        <div class="brand-lockup brand-lockup-light">
-          <span class="brand-mark" aria-hidden="true">V</span>
-          <span>
-            <strong>KVCA</strong>
-            <small>V-Up Operations</small>
-          </span>
-        </div>
-        <div class="login-intro-block">
-          <p class="login-eyebrow">EDUCATION OPERATIONS PLATFORM</p>
-          <h1>
-            어서오세요,<br />
-            교육연수팀 관리자 페이지입니다.
-          </h1>
-          <p class="login-brand-copy">
-            교육생 관리, 현장 설문조사 등 교육 운영을 위한 모든 과정을<br />
-            이곳에서 편리하게 관리하세요.
-          </p>
-          <div class="login-feature-strip" aria-label="핵심 기능">
-            <span>관리자별 전용 공간</span>
-            <span>실시간 자료 반영</span>
-            <span>운영 기록 보존</span>
+  <section id="loginView" class="kv-login" aria-labelledby="kvLoginTitle">
+    <div class="kv-panel">
+      <div class="kv-copy">
+        <span class="kv-badge">V-Up 및 숙박 교육 운영 콘솔</span>
+        <h1>숙박교육 운영 준비부터 현장 운영까지,<br /><span>한 화면에서</span></h1>
+        <p>교육생 명부 · 객실 배정 · 식사 자리 · 강의장 좌석 · 만족도 설문</p>
+      </div>
+      <div class="kv-art" aria-hidden="true">
+        <div class="kv-stage">
+          <div class="kv-slab"></div>
+          <div class="kv-screen">
+            <div class="kv-side"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+            <div class="kv-main">
+              <div class="kv-bar"><b></b><s></s></div>
+              <div class="kv-box kv-seats"><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u></div>
+              <div class="kv-box kv-rows"><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="kv-box kv-chart"><u style="height:40%"></u><u style="height:65%"></u><u style="height:52%"></u><u style="height:80%"></u><u style="height:60%"></u></div>
+            </div>
           </div>
+          <div class="kv-fc kv-fc1">강의장 좌석<small>자동 배정 후 바로 수정</small><div class="kv-mini"><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u><u></u></div></div>
+          <div class="kv-fc kv-fc2">만족도 설문<small>강의별 결과 한눈에</small><div class="kv-bars"><u style="height:45%"></u><u style="height:70%"></u><u style="height:55%"></u><u style="height:90%"></u></div></div>
+          <div class="kv-fc kv-fc3">객실 · 식사 배정<small>룸메이트와 식사 자리까지</small></div>
         </div>
       </div>
-      <div class="login-brand-footer">Korea Venture Capital Association</div>
     </div>
 
-    <div class="login-form-panel">
-      <form id="loginForm" class="login-card" novalidate onsubmit="event.preventDefault();">
-        <div class="login-mobile-brand">
-          <span class="brand-mark" aria-hidden="true">V</span>
-          <span><strong>KVCA V-Up</strong><small>교육 운영 콘솔</small></span>
-        </div>
-        <p class="login-kicker">ADMIN CONSOLE</p>
-        <h2 id="loginTitle">관리자 로그인</h2>
-        <p class="login-description">
-          총괄 관리자가 부여한 계정으로만 접속할 수 있습니다.
-        </p>
+    <div class="kv-card-wrap">
+      <form id="loginForm" class="kv-card" novalidate onsubmit="event.preventDefault();">
+        <div class="kv-logo" role="img" aria-label="KVCA 한국벤처캐피탈협회"></div>
+        <h2 id="kvLoginTitle">관리자 로그인</h2>
+        <p class="kv-sub">총괄 관리자가 부여한 계정으로만 접속할 수 있습니다.</p>
 
-        <label class="field">
-          <span class="field-label">관리자 ID</span>
-          <span class="field-control">
-            <span class="field-leading" aria-hidden="true">ID</span>
-            <input
-              id="loginId"
-              name="id"
-              type="text"
-              autocomplete="username"
-              inputmode="text"
-              maxlength="40"
-              placeholder="관리자 ID"
-              required
-            />
+        <label class="kv-field">
+          <span>관리자 ID</span>
+          <input id="loginId" name="id" type="text" autocomplete="username" inputmode="text" maxlength="40" placeholder="관리자 ID를 입력하세요" required />
+        </label>
+
+        <label class="kv-field">
+          <span>비밀번호</span>
+          <span class="kv-pw">
+            <input id="loginPassword" name="password" type="password" autocomplete="current-password" maxlength="160" placeholder="비밀번호를 입력하세요" required />
+            <button id="passwordToggle" type="button" class="kv-eye" aria-label="비밀번호 표시">보기</button>
           </span>
         </label>
 
-        <label class="field">
-          <span class="field-label">비밀번호</span>
-          <span class="field-control">
-            <span class="field-leading" aria-hidden="true">PW</span>
-            <input
-              id="loginPassword"
-              name="password"
-              type="password"
-              autocomplete="current-password"
-              maxlength="160"
-              placeholder="비밀번호"
-              required
-            />
-            <button
-              id="passwordToggle"
-              type="button"
-              class="password-toggle"
-              aria-label="비밀번호 표시"
-            >보기</button>
-          </span>
-        </label>
+        <button type="button" class="kv-forgot" data-login-help="find-password">비밀번호를 잊으셨나요?</button>
 
-        <div id="loginError" class="form-error hidden" role="alert"></div>
+        <div id="loginError" class="kv-error hidden" role="alert"></div>
 
-        <button id="loginSubmit" type="submit" class="btn btn-primary btn-login">
-          <span>관리자 콘솔 시작하기</span>
-          <span aria-hidden="true">→</span>
-        </button>
+        <button id="loginSubmit" type="submit" class="kv-submit"><span>로그인</span></button>
 
-        <div class="login-help-actions" aria-label="계정 도움말">
-          <button type="button" class="login-help-button" data-login-help="find-id">
-            ID 찾기
-          </button>
-          <button type="button" class="login-help-button" data-login-help="find-password">
-            비밀번호 찾기
-          </button>
-          <button type="button" class="login-help-button" data-login-help="change-password">
-            비밀번호 변경
-          </button>
+        <div class="kv-or">계정 도움말</div>
+        <div class="kv-help">
+          <button type="button" data-login-help="find-id">ID 찾기</button>
+          <button type="button" data-login-help="change-password">비밀번호 변경</button>
         </div>
 
-        <p class="login-security-note">
-          본 페이지는 총괄 관리자에게 ID / PW를 부여받은 인원만 접속 가능합니다.<br />
-          해당 사이트 권한이 필요하신 분은 오찬희 연구원에게 문의 바랍니다
+        <p class="kv-note">
+          <b>처음 접속하셨나요?</b> 초기 비밀번호로 로그인한 뒤 바로 변경해 주세요.<br />
+          권한 문의 · 교육연수팀 오찬희 연구원
         </p>
       </form>
     </div>
