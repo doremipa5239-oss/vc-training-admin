@@ -87,7 +87,7 @@
     return result;
   }
   function amountDue(person, fees) { return person.status === 'cancelled' ? 0 : person.feeAmount == null ? fees[person.membership] == null ? null : Number(fees[person.membership]) : person.feeAmount; }
-  }
+  
   function summarize(state) {
     const result = { total: state.participants.length, approved: 0, pending: 0, cancelled: 0, present: 0, expected: 0, paid: 0, outstanding: 0, refundReview: 0, notes: 0, unpriced: 0 };
     state.participants.forEach(function (p) {
