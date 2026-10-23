@@ -97,6 +97,22 @@ function portalRestoreSession(token) {
   }, { allowPasswordChange: true });
 }
 
+/** '다음에 변경하기': 이번 로그인에서만 초기 비밀번호 변경 요구를 건너뜁니다. 다음 로그인 때 다시 안내합니다. */
+function portalDeferPasswordChange(token) {
+  return withAdminSession_(token, function () {
+    return withScriptLock_(function () {
+      const properties = PropertiesService.getScriptProperties();
+      const key = ADMIN_SESSION_PREFIX + hashPortalToken_(String(token || ''));
+      let session = null;
+      try { session = JSON.parse(properties.getProperty(key) || 'null'); } catch (e) { session = null; }
+      if (!session) throw new Error('로그인이 만료되었습니다. 다시 로그인해주세요.');
+      session.passwordChangeDeferred = true;
+      properties.setProperty(key, JSON.stringify(session));
+      return { success: true, message: '다음 로그인 때 다시 안내해드릴게요.' };
+    }, 15000);
+  }, { allowPasswordChange: true });
+}
+
 function portalLogout(token) {
   return withScriptLock_(function () {
     const normalizedToken = String(token || '');
