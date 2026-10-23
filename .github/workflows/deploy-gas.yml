@@ -46,6 +46,37 @@ jobs:
           cat 02-frontend/admin-script-{1,2,3}.html \
             > dist/admin-script.html
 
+      - name: Minify admin page
+        shell: bash
+        run: |
+          TOOL_DIR="$RUNNER_TEMP/minify"
+          mkdir -p "$TOOL_DIR"
+          npm install --no-save --prefix "$TOOL_DIR" esbuild@0.28.2
+
+          cat > "$TOOL_DIR/minify.mjs" <<'EOF'
+          import { readFileSync, writeFileSync } from "node:fs";
+          import { transformSync } from "esbuild";
+
+          function minifyBlocks(file, tag, loader) {
+            const source = readFileSync(file, "utf8");
+            const pattern = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "g");
+            const blocks = [...source.matchAll(pattern)].map((m) => m[1]);
+            if (blocks.length === 0) throw new Error(`${file}: <${tag}> block not found`);
+            const joined = blocks.join(loader === "js" ? "\n;\n" : "\n");
+            const { code } = transformSync(joined, {
+              loader, minify: true, charset: "utf8", legalComments: "none"
+            });
+            if (code.includes(`</${tag}`)) throw new Error(`${file}: unsafe </${tag}> in output`);
+            writeFileSync(file, `<${tag}>${code}</${tag}>\n`);
+            console.log(`${file}: ${source.length} -> ${code.length} chars`);
+          }
+
+          minifyBlocks("dist/admin-style.html", "style", "css");
+          minifyBlocks("dist/admin-script.html", "script", "js");
+          EOF
+
+          node "$TOOL_DIR/minify.mjs"
+
       - name: Configure Google authentication
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
