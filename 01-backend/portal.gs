@@ -1143,7 +1143,7 @@ function getAdminSession_(token) {
     }
     session.role = account.role;
     session.displayName = account.displayName;
-    session.mustChangePassword = Boolean(account.mustChangePassword);
+    session.mustChangePassword = Boolean(account.mustChangePassword) && !session.passwordChangeDeferred;
     if (now - lastSeenAt > 5 * 60 * 1000) {
       session.lastSeenAt = now;
       properties.setProperty(key, JSON.stringify(session));
