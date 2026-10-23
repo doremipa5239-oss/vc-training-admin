@@ -1225,6 +1225,12 @@ function initializeWebAppRouting() {
   return initializeWebAppRouting_();
 }
 
+/** 콜드 스타트 완화용: 시간 기반 트리거로 10분마다 실행합니다. */
+function keepAdminWarm() {
+  PropertiesService.getScriptProperties().getProperty('ADMIN_ENTRY_KEY');
+  HtmlService.createHtmlOutputFromFile('admin-main').getContent();
+}
+
 function getSiteEditSessionKey_(siteId) {
   return 'siteEditSession:' + String(siteId || '');
 }
