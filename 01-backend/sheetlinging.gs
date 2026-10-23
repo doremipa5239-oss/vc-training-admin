@@ -671,7 +671,7 @@ function buildRoommateTemplate_(sheet) {
  * 관리자가 기존 통합 시트 없이 시작할 때: 교육생 명단 / 자리 배치도 / 객실배치
  * 3개 시트가 표준 양식으로 갖춰진 새 파일을 만들어 바로 연동합니다.
  */
-function createDedicatedMealSpreadsheet(siteId, title) {
+function createDedicatedMealSpreadsheet_(siteId, title) {
   const ss = SpreadsheetApp.create(title);
 
   // 1) 내가 의도적으로 만들 "표준 시트" 목록
